@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fortress — defensive root security scanner (source delivery).
+
+     Permission rationale (mirrors README.md "Permission walkthrough"):
+       INTERNET / ACCESS_NETWORK_STATE ......... VirusTotal lookups, network posture
+       POST_NOTIFICATIONS ....................... scan/guard notifications (API 33+ runtime)
+       FOREGROUND_SERVICE + _SPECIAL_USE ........ RealtimeGuard lives as a user-visible FGS
+       RECEIVE_BOOT_COMPLETED ................... re-arm the guard after reboot
+       QUERY_ALL_PACKAGES ....................... per-app traffic attribution + task list
+                                                  (Play policy: this build is sideload/lab-only)
+       REQUEST_INSTALL_PACKAGES ................. MagiskInstaller system-app flow (optional) -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application
+        android:label="@string/app_name"
+        android:theme="@android:style/Theme.Material.NoActionBar"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:icon="@android:drawable/sym_def_app_icon">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".ConsoleActivity"
+            android:exported="false"
+            android:label="@string/app_name" />
+
+        <!-- Packet tap: guarded by the service-level permission the system holds,
+             so only the framework can bind and call our VpnService methods. -->
+        <service
+            android:name=".net.PacketVpnService"
+            android:exported="true"
+            android:permission="android.service.VpnService"
+            android:foregroundServiceType="specialUse">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="packet-tap-firewall" />
+        </service>
+
+        <!-- Persistent realtime monitor (module watcher, package listener, clipboard guard). -->
+        <service
+            android:name=".guard.RealtimeGuard"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="security-monitoring" />
+        </service>
+
+        <!-- BOOT_COMPLETED is a protected system broadcast; exported=false is safe and
+             still receives it (system callers bypass the export gate). -->
+        <receiver android:name=".guard.BootReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

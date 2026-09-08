@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fortress strings. Deliberately minimal: the console UI is built
+     programmatically; only notification/channel text lives in resources so
+     system surfaces (FGS notifications) render in the device locale-neutral
+     English console style. -->
+<resources>
+    <string name="app_name">Fortress</string>
+
+    <!-- Notification channels (created in ConsoleActivity.createNotificationChannels) -->
+    <string name="channel_guard">Realtime guard</string>
+    <string name="channel_vpn">Network tap</string>
+    <string name="channel_scan">Scan progress</string>
+
+    <!-- Foreground service notifications -->
+    <string name="guard_notif_title">Fortress guard active</string>
+    <string name="guard_notif_text">Watching Magisk modules, package changes, clipboard events</string>
+    <string name="vpn_notif_title">Fortress network tap</string>
+    <string name="vpn_notif_text">Packet classification active — blocked apps enforced by firewall rules</string>
+</resources>

@@ -1,0 +1,80 @@
+# Fortress — Android CI
+#
+# Builds the debug APK and publishes it as the `fortress-debug-apk` artifact.
+#
+# REPO LAYOUT REQUIREMENT: this file must live at .github/workflows/android.yml
+# in your repository root, i.e. you copy the CONTENTS of fortress-android-src/
+# (including the hidden .github folder) to the root of a new GitHub repo.
+
+name: android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Write is not needed for assembleDebug itself, but keeps artifact upload and
+# summary writes unambiguous on repos with restrictive default token scopes.
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: assembleDebug
+    runs-on: ubuntu-latest
+    # Fail fast instead of hanging on a stuck download; Android builds
+    # typically finish well under this on hosted runners.
+    timeout-minutes: 35
+    # Skip superseded pushes — saves minutes on rapid consecutive commits.
+    concurrency:
+      group: android-${{ github.ref }}
+      cancel-in-progress: true
+
+    env:
+      # GitHub-hosted ubuntu runners ship the Android SDK here.
+      ANDROID_HOME: /usr/local/lib/android/sdk
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Caches the Gradle user home (wrapper + dependencies) between runs.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null || true
+
+      # Exact versions pinned in app/build.gradle.kts
+      # (ndkVersion = 27.0.12077973, cmake version = 3.22.1).
+      - name: Install pinned NDK and CMake
+        run: sdkmanager --install "ndk;27.0.12077973" "cmake;3.22.1"
+
+      # Copying the tree on Windows can drop the executable bit — enforce it.
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fortress-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Build summary
+        run: |
+          echo "Fortress debug build completed."
+          echo "APK artifact : fortress-debug-apk"
+          echo "APK path     : app/build/outputs/apk/debug/app-debug.apk"
+          ls -lh app/build/outputs/apk/debug/
