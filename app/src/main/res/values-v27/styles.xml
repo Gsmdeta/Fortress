@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- API 27+ variant of FortressTheme. Style resources are replaced whole per
+     configuration (they do not merge item-by-item), so this variant repeats
+     the full definition and adds android:windowLightNavigationBar, which
+     needs API 27 — keeping minSdk 26 lint-clean. -->
+<resources>
+    <style name="FortressTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/fortress_bg</item>
+        <item name="android:colorBackground">@color/fortress_bg</item>
+        <item name="android:statusBarColor">@color/fortress_bg</item>
+        <item name="android:navigationBarColor">@color/fortress_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+
+        <item name="colorPrimary">@color/fortress_accent</item>
+        <item name="colorPrimaryDark">@color/fortress_bg</item>
+        <item name="colorAccent">@color/fortress_accent</item>
+        <item name="colorControlActivated">@color/fortress_accent</item>
+    </style>
+</resources>

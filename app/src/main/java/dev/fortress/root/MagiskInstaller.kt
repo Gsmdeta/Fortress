@@ -23,8 +23,8 @@ object MagiskInstaller {
 
     private const val MODULE_ID = "fortress_console"
     private const val MODULE_NAME = "Fortress Security Console"
-    private const val MODULE_VERSION = "v1.1.0"
-    private const val MODULE_VERSION_CODE = 11
+    private const val MODULE_VERSION = "v1.2.0"
+    private const val MODULE_VERSION_CODE = 12
 
     /** human-readable progress from the packaging/install phases */
     suspend fun installAsSystemApp(

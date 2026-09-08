@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import dev.fortress.scanner.DeepScanner
 import dev.fortress.scanner.RootkitHeuristics
+import dev.fortress.ui.dp
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -48,7 +49,7 @@ class ScannerFragment : Fragment() {
         val ctx = requireContext()
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 40, 40, 40)
+            setPadding(dp(20), dp(20), dp(20), dp(20))
             setBackgroundColor(Color.parseColor("#09090B"))
         }
 
@@ -83,7 +84,15 @@ class ScannerFragment : Fragment() {
         }
         root.addView(phaseLabel)
 
-        startButton = Button(ctx).apply { text = "START SCAN" }
+        // Emerald action button — the console accent with dark text, matching
+        // the tab highlight; explicit tint so it never inherits a light-theme
+        // default from the platform.
+        startButton = Button(ctx).apply {
+            text = "START SCAN"
+            setTextColor(Color.parseColor("#09090B"))
+            backgroundTintList = android.content.res.ColorStateList.valueOf(
+                Color.parseColor("#34D399"))
+        }
         root.addView(startButton)
 
         logView = TextView(ctx).apply {

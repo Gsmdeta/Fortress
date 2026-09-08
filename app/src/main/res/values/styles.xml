@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fortress console theme.
+     The first delivery used the framework's dark Theme.Material, which crashes
+     AppCompatActivity on launch ("You need to use a Theme.AppCompat theme").
+     Swapping the whole theme to plain AppCompat fixed that crash but turned
+     the window background WHITE, breaking the console look. This theme keeps
+     the required AppCompat parent while pinning every window color back to
+     the original zinc-950 palette — same dark console as the first UI,
+     without the crash. -->
+<resources>
+    <style name="FortressTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@color/fortress_bg</item>
+        <item name="android:colorBackground">@color/fortress_bg</item>
+        <item name="android:statusBarColor">@color/fortress_bg</item>
+        <item name="android:navigationBarColor">@color/fortress_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+
+        <!-- Console accents: emerald tints the scanner progress bar and button. -->
+        <item name="colorPrimary">@color/fortress_accent</item>
+        <item name="colorPrimaryDark">@color/fortress_bg</item>
+        <item name="colorAccent">@color/fortress_accent</item>
+        <item name="colorControlActivated">@color/fortress_accent</item>
+    </style>
+</resources>

@@ -9,6 +9,7 @@ import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
@@ -18,6 +19,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import dev.fortress.net.PacketVpnService
 import dev.fortress.ui.ScannerFragment
+import dev.fortress.ui.dp
 
 /**
  * Main dashboard: six tabs mirroring the web command center
@@ -50,7 +52,7 @@ class ConsoleActivity : AppCompatActivity() {
         val tabBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.parseColor("#18181B"))
-            setPadding(8, 12, 8, 12)
+            setPadding(dp(8), dp(12), dp(8), dp(12))
         }
         val tabs = tabLabels.map { label ->
             TextView(this).apply {
@@ -59,7 +61,10 @@ class ConsoleActivity : AppCompatActivity() {
                 letterSpacing = 0.15f
                 gravity = Gravity.CENTER
                 setTextColor(Color.parseColor("#A1A1AA"))
-                setPadding(24, 20, 24, 20)
+                setPadding(dp(16), dp(12), dp(16), dp(12))
+                // minWidth keeps the 6 tabs readable on narrow phones (the
+                // strip scrolls) while the weight spreads them on tablets.
+                minWidth = dp(76)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener { pager.setCurrentItem(tabLabels.indexOf(label), true) }
             }.also(tabBar::addView)
@@ -68,6 +73,9 @@ class ConsoleActivity : AppCompatActivity() {
         val tabScroll = HorizontalScrollView(this).apply {
             addView(tabBar)
             isHorizontalScrollBarEnabled = false
+            // Spread tabs across the full width whenever they fit (the bar's
+            // natural width is smaller than the viewport), e.g. on tablets.
+            isFillViewport = true
         }
 
         // --- pager -------------------------------------------------------
@@ -205,21 +213,29 @@ class ForensicsFragment : Fragment() {
     )
 }
 
-/** Shared programmatic panel builder for the console stubs. */
-internal fun Fragment.panel(title: String, body: String): TextView {
+/**
+ * Shared programmatic panel builder for the console stubs.
+ *
+ * Wrapped in a ScrollView so long readouts stay reachable on small screens and
+ * in landscape; all paddings are density-independent (dp).
+ */
+internal fun Fragment.panel(title: String, body: String): ScrollView {
     val ctx = requireContext()
-    return TextView(ctx).apply {
+    val content = TextView(ctx).apply {
         setTextColor(Color.parseColor("#D4D4D8"))
         textSize = 13f
         typeface = android.graphics.Typeface.MONOSPACE
-        setPadding(40, 40, 40, 40)
+        setPadding(dp(20), dp(20), dp(20), dp(40))
         text = buildString {
             appendLine("■ $title")
             appendLine()
             append(body)
         }
-        setBackgroundColor(Color.parseColor("#09090B"))
         layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+    }
+    return ScrollView(ctx).apply {
+        setBackgroundColor(Color.parseColor("#09090B"))
+        addView(content)
     }
 }

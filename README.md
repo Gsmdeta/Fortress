@@ -5,7 +5,7 @@ Fortress web command center (`dev.fortress.console` APK). The tree ships a
 Gradle wrapper (Gradle 8.10.2) and a GitHub Actions workflow, so it builds
 out of the box — locally or on CI — with no Android Studio required.
 
-- **Package:** `dev.fortress.console` · versionCode `11` · versionName `1.1.0`
+- **Package:** `dev.fortress.console` · versionCode `12` · versionName `1.2.0`
 - **SDK targets:** minSdk 26 (Android 8.0) · compileSdk/targetSdk 35
 - **Language stack:** Kotlin 2.0 · AGP 8.7 · coroutines/Flow · NDK (C++17) for native heuristics
 - **ABIs:** `arm64-v8a`, `armeabi-v7a` (root heuristics are meaningless on x86 emulator images)
@@ -95,7 +95,7 @@ hard rate limit 4 req/min.
 
 ```
 fortress_console/
-  module.prop                    # id, name, version v1.1.0 (versionCode 11)
+  module.prop                    # id, name, version v1.2.0 (versionCode 12)
   post-fs-data.sh                # no-op placeholder hook
   system/app/Fortress/Fortress.apk
 ```
@@ -138,7 +138,7 @@ app/src/main/
     firewall/             FirewallManager
     tasks/                TaskManager
     ui/                   ProjectionView · ScannerFragment
-  res/values/strings.xml  app_name + notification strings (res kept minimal)
+  res/                    values (strings · colors · FortressTheme) + adaptive launcher icons (drawable/mipmap)
   assets/cve-db.json      8-entry catalog mirroring the web CVE_CATALOG
 ```
 

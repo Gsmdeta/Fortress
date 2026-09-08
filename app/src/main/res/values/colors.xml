@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fortress console palette — the zinc-950/emerald scheme the original UI
+     shipped with. Centralized here so themes and programmatic views agree. -->
+<resources>
+    <color name="fortress_bg">#09090B</color>
+    <color name="fortress_surface">#18181B</color>
+    <color name="fortress_accent">#34D399</color>
+    <color name="fortress_text_primary">#D4D4D8</color>
+    <color name="fortress_text_muted">#A1A1AA</color>
+</resources>

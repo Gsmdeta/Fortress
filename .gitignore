@@ -1,0 +1,18 @@
+# Gradle / Android build outputs
+.gradle/
+build/
+app/build/
+local.properties
+
+# Native build caches
+.externalNativeBuild/
+.cxx/
+
+# IDE files
+.idea/
+*.iml
+captures/
+
+# OS noise
+.DS_Store
+Thumbs.db

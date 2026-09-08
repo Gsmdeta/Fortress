@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fortress launcher emblem: an emerald shield carrying a fortress gate and
+     battlements. Artwork stays inside the 66dp adaptive-icon safe zone
+     (centered at 54,54 in the 108dp viewport) so mask cropping on any
+     launcher shape never clips the glyph. This drawable was referenced by
+     mipmap-anydpi-v26/ic_launcher.xml but missing from the tree, which broke
+     the resource build — it is now the app's real logo. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Shield silhouette -->
+    <path
+        android:fillColor="#34D399"
+        android:pathData="M54,24 C60.5,27.6 68.6,30 77,30.6 L77,54.5 C77,68 69.4,78.4 54,84.5 C38.6,78.4 31,68 31,54.5 L31,30.6 C39.4,30 47.5,27.6 54,24 Z"/>
+
+    <!-- Battlement notches across the shield crest -->
+    <path
+        android:fillColor="#101013"
+        android:pathData="M41.5,39.5 h6 v7 h-6 Z M51,39.5 h6 v7 h-6 Z M60.5,39.5 h6 v7 h-6 Z"/>
+
+    <!-- Fortress gate arch -->
+    <path
+        android:fillColor="#101013"
+        android:pathData="M46.5,73 L46.5,56 A7.5,7.5 0 0 1 61.5,56 L61.5,73 Z"/>
+</vector>

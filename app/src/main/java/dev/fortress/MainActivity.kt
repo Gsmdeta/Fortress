@@ -1,12 +1,14 @@
 package dev.fortress
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import dev.fortress.ui.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -36,14 +38,18 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // No layout XML in this delivery — a minimal programmatic splash keeps
-        // the triage output visible without res/ churn.
+        // the triage output visible without res/ churn. The background is set
+        // explicitly so the splash stays zinc-950 even if the window theme
+        // ever drifts; paddings go through dp() for density independence.
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setPadding(48, 48, 48, 48)
+            setBackgroundColor(Color.parseColor("#09090B"))
+            setPadding(dp(24), dp(24), dp(24), dp(24))
         }
         status = TextView(this).apply {
             textSize = 14f
+            gravity = Gravity.CENTER
             setTextColor(0xFFE4E4E7.toInt())
             text = "fortress · environment triage…"
         }
