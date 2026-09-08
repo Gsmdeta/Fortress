@@ -29,6 +29,9 @@ data class PosturePointData(val score: Int, val label: String, val ts: Long)
  * File-backed JSON store for scan sessions + posture history. Deliberately
  * plain org.json (no Room/kapt) so the build stays dependency-light; the
  * datasets are tiny (capped), so file rewrites are cheap.
+ *
+ * NOTE: JSONArray access uses index loops (not Kotlin collection extensions) —
+ * org.json's JSONArray is a raw Java iterable that K2 will not map over.
  */
 class SessionStore(context: Context) {
 
@@ -37,49 +40,78 @@ class SessionStore(context: Context) {
     private val postureFile: File get() = File(appContext.filesDir, "posture.json")
 
     @Synchronized
-    fun sessions(): List<ScanSession> =
-        readArray(sessionsFile).map { o ->
-            ScanSession(
-                id = o.optString("id"),
-                label = o.optString("label"),
-                startedAt = o.optLong("startedAt"),
-                finishedAt = o.optLong("finishedAt"),
-                score = o.optInt("score"),
-                verdict = o.optString("verdict"),
-                findings = o.optJSONArray("findings")?.let { arr ->
-                    (0 until arr.length()).map { i ->
-                        val f = arr.getJSONObject(i)
-                        FindingEntry(f.optString("severity"), f.optString("title"), f.optString("detail"))
-                    }
-                } ?: emptyList(),
+    fun sessions(): List<ScanSession> = readSessions()
+
+    private fun readSessions(): List<ScanSession> {
+        val arr = readArray(sessionsFile)
+        val out = ArrayList<ScanSession>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val findingsArr = o.optJSONArray("findings")
+            val findings = ArrayList<FindingEntry>(if (findingsArr == null) 0 else findingsArr.length())
+            if (findingsArr != null) {
+                for (j in 0 until findingsArr.length()) {
+                    val f = findingsArr.getJSONObject(j)
+                    findings.add(
+                        FindingEntry(
+                            severity = f.optString("severity"),
+                            title = f.optString("title"),
+                            detail = f.optString("detail"),
+                        )
+                    )
+                }
+            }
+            out.add(
+                ScanSession(
+                    id = o.optString("id"),
+                    label = o.optString("label"),
+                    startedAt = o.optLong("startedAt"),
+                    finishedAt = o.optLong("finishedAt"),
+                    score = o.optInt("score"),
+                    verdict = o.optString("verdict"),
+                    findings = findings,
+                )
             )
         }
+        return out
+    }
 
     @Synchronized
     fun saveSession(session: ScanSession) {
-        val all = sessions().toMutableList()
+        val all = readSessions().toMutableList()
         all.add(0, session)
-        writeArray(sessionsFile, all.take(MAX_SESSIONS).map { it.toJson() })
+        val arr = JSONArray()
+        for (s in all.take(MAX_SESSIONS)) arr.put(s.toJson())
+        writeArray(sessionsFile, arr)
     }
 
     @Synchronized
     fun sessionCount(): Int = readArray(sessionsFile).length()
 
     @Synchronized
-    fun posture(): List<PosturePointData> =
-        readArray(postureFile).map { o ->
-            PosturePointData(
-                score = o.optInt("score"),
-                label = o.optString("label"),
-                ts = o.optLong("ts"),
+    fun posture(): List<PosturePointData> {
+        val arr = readArray(postureFile)
+        val out = ArrayList<PosturePointData>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(
+                PosturePointData(
+                    score = o.optInt("score"),
+                    label = o.optString("label"),
+                    ts = o.optLong("ts"),
+                )
             )
         }
+        return out
+    }
 
     @Synchronized
     fun appendPosture(point: PosturePointData) {
         val all = posture().toMutableList()
         all.add(point)
-        writeArray(postureFile, all.takeLast(MAX_POSTURE).map { it.toJson() })
+        val arr = JSONArray()
+        for (p in all.takeLast(MAX_POSTURE)) arr.put(p.toJson())
+        writeArray(postureFile, arr)
     }
 
     private fun ScanSession.toJson(): JSONObject = JSONObject().apply {
@@ -89,15 +121,17 @@ class SessionStore(context: Context) {
         put("finishedAt", finishedAt)
         put("score", score)
         put("verdict", verdict)
-        put("findings", JSONArray().apply {
-            findings.forEach { f ->
-                put(JSONObject().apply {
+        val findingsArr = JSONArray()
+        findings.forEach { f ->
+            findingsArr.put(
+                JSONObject().apply {
                     put("severity", f.severity)
                     put("title", f.title)
                     put("detail", f.detail)
-                })
-            }
-        })
+                }
+            )
+        }
+        put("findings", findingsArr)
     }
 
     private fun PosturePointData.toJson(): JSONObject = JSONObject().apply {
@@ -112,9 +146,9 @@ class SessionStore(context: Context) {
         JSONArray() // missing/corrupt file — start empty, never crash the console
     }
 
-    private fun writeArray(file: File, objects: List<JSONObject>) {
+    private fun writeArray(file: File, arr: JSONArray) {
         try {
-            file.writeText(JSONArray(objects).toString())
+            file.writeText(arr.toString())
         } catch (e: Exception) {
             // storage hiccup — persistence is best-effort, the console keeps working
         }

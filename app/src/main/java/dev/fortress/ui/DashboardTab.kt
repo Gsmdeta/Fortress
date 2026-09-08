@@ -31,8 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.DashPathEffect
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -322,7 +322,8 @@ private fun PostureChart(points: List<PosturePointData>) {
         }
         fill.lineTo(xFor(points.size - 1), bottom)
         fill.close()
-        drawPath(fill, Color(0x2234D399))
+        // 13% emerald veil under the curve (matches the web halo fill)
+        drawPath(fill, ConsoleColors.Emerald.copy(alpha = 0.13f))
         drawPath(path, ConsoleColors.Emerald, style = Stroke(width = 3.dp.toPx()))
         points.indices.forEach { i ->
             drawCircle(ConsoleColors.Emerald, radius = 4.dp.toPx(), center = Offset(xFor(i), yFor(points[i].score)))
@@ -332,10 +333,10 @@ private fun PostureChart(points: List<PosturePointData>) {
         if (selected in points.indices) {
             val x = xFor(selected)
             val y = yFor(points[selected].score)
-            val dash = DashPathEffect(floatArrayOf(8f, 6f), 0f)
+            val dash = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
             drawLine(ConsoleColors.TextMuted, Offset(x, top), Offset(x, bottom), strokeWidth = 1.5f, pathEffect = dash)
             drawLine(ConsoleColors.TextMuted, Offset(left, y), Offset(right, y), strokeWidth = 1.5f, pathEffect = dash)
-            drawCircle(Color(0x3334D399), radius = 14.dp.toPx(), center = Offset(x, y))
+            drawCircle(ConsoleColors.Emerald.copy(alpha = 0.2f), radius = 14.dp.toPx(), center = Offset(x, y))
             drawCircle(ConsoleColors.Emerald, radius = 7.dp.toPx(), center = Offset(x, y))
         }
     }

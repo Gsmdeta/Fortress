@@ -148,14 +148,15 @@ fun StatusChip(text: String, kind: ChipKind, modifier: Modifier = Modifier) {
     }
 }
 
-/** Emerald action button (primary) or outlined ghost variant, 44dp touch target. */
+/** Emerald action button (primary) or outlined ghost variant, 44dp touch target.
+ *  onClick is the LAST parameter so call sites can use trailing-lambda syntax. */
 @Composable
 fun ConsoleButton(
     text: String,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     primary: Boolean = true,
+    onClick: () -> Unit,
 ) {
     val alpha = if (enabled) 1f else 0.4f
     Box(
