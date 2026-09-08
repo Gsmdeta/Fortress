@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#09090B"))
-            setPadding(dp(24), dp(24), dp(24), dp(24))
+            setPadding(this.dp(24), this.dp(24), this.dp(24), this.dp(24))
         }
         status = TextView(this).apply {
             textSize = 14f

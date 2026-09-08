@@ -49,7 +49,7 @@ class ScannerFragment : Fragment() {
         val ctx = requireContext()
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(20))
+            setPadding(ctx.dp(20), ctx.dp(20), ctx.dp(20), ctx.dp(20))
             setBackgroundColor(Color.parseColor("#09090B"))
         }
 

@@ -52,7 +52,7 @@ class ConsoleActivity : AppCompatActivity() {
         val tabBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.parseColor("#18181B"))
-            setPadding(dp(8), dp(12), dp(8), dp(12))
+            setPadding(this.dp(8), this.dp(12), this.dp(8), this.dp(12))
         }
         val tabs = tabLabels.map { label ->
             TextView(this).apply {
@@ -61,10 +61,10 @@ class ConsoleActivity : AppCompatActivity() {
                 letterSpacing = 0.15f
                 gravity = Gravity.CENTER
                 setTextColor(Color.parseColor("#A1A1AA"))
-                setPadding(dp(16), dp(12), dp(16), dp(12))
+                setPadding(this.dp(16), this.dp(12), this.dp(16), this.dp(12))
                 // minWidth keeps the 6 tabs readable on narrow phones (the
                 // strip scrolls) while the weight spreads them on tablets.
-                minWidth = dp(76)
+                minWidth = this.dp(76)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener { pager.setCurrentItem(tabLabels.indexOf(label), true) }
             }.also(tabBar::addView)
@@ -225,7 +225,7 @@ internal fun Fragment.panel(title: String, body: String): ScrollView {
         setTextColor(Color.parseColor("#D4D4D8"))
         textSize = 13f
         typeface = android.graphics.Typeface.MONOSPACE
-        setPadding(dp(20), dp(20), dp(20), dp(40))
+        setPadding(ctx.dp(20), ctx.dp(20), ctx.dp(20), ctx.dp(40))
         text = buildString {
             appendLine("■ $title")
             appendLine()
