@@ -65,11 +65,11 @@ class DeepScanner(private val context: Context) {
 
         val deduction = findings.sumOf { f ->
             when (f.severity) {
-                Severity.INFO -> 2
-                Severity.WARN -> 10
-                Severity.CRITICAL -> 25
+                Severity.INFO -> 2L
+                Severity.WARN -> 10L
+                Severity.CRITICAL -> 25L
             }
-        }
+        }.toInt()
         val score = (100 - deduction).coerceIn(0, 100)
         val verdict = when {
             score >= 85 -> "CLEAN"
