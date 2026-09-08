@@ -16,7 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import dev.fortress.scanner.DeepScanner
 import dev.fortress.scanner.RootkitHeuristics
-import dev.fortress.ui.dp
+import dev.fortress.ui.dpPx
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -49,7 +49,7 @@ class ScannerFragment : Fragment() {
         val ctx = requireContext()
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(ctx.dp(20), ctx.dp(20), ctx.dp(20), ctx.dp(20))
+            setPadding(dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 20))
             setBackgroundColor(Color.parseColor("#09090B"))
         }
 

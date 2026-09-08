@@ -8,7 +8,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import dev.fortress.ui.dp
+import dev.fortress.ui.dpPx
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#09090B"))
-            setPadding(this.dp(24), this.dp(24), this.dp(24), this.dp(24))
+            setPadding(dpPx(this, 24), dpPx(this, 24), dpPx(this, 24), dpPx(this, 24))
         }
         status = TextView(this).apply {
             textSize = 14f
