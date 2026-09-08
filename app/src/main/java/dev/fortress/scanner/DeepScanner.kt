@@ -63,13 +63,14 @@ class DeepScanner(private val context: Context) {
         phase3FileAudit(rooted)
         phase4RootkitHeuristics(rooted)
 
-        val score = (100 - findings.sumOf { f ->
+        val deduction = findings.sumOf { f ->
             when (f.severity) {
                 Severity.INFO -> 2
                 Severity.WARN -> 10
                 Severity.CRITICAL -> 25
             }
-        }).coerceIn(0, 100)
+        }
+        val score = (100 - deduction).coerceIn(0, 100)
         val verdict = when {
             score >= 85 -> "CLEAN"
             score >= 55 -> "SUSPICIOUS"
