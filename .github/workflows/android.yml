@@ -31,10 +31,6 @@ jobs:
       group: android-${{ github.ref }}
       cancel-in-progress: true
 
-    env:
-      # GitHub-hosted ubuntu runners ship the Android SDK here.
-      ANDROID_HOME: /usr/local/lib/android/sdk
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v5
@@ -48,6 +44,12 @@ jobs:
       # Caches the Gradle user home (wrapper + dependencies) between runs.
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
+
+      # ubuntu-latest runners no longer ship the Android SDK preinstalled, so
+      # install the command-line tools (sdkmanager) explicitly. The action also
+      # exports ANDROID_HOME for the sdkmanager steps below.
+      - name: Set up Android SDK (cmdline-tools)
+        uses: android-actions/setup-android@v3
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
