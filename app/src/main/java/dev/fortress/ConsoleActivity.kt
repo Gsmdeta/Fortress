@@ -24,10 +24,12 @@ import dev.fortress.ui.ConsoleColors
 import dev.fortress.ui.ConsoleTabBar
 import dev.fortress.ui.DashboardTab
 import dev.fortress.ui.FortressConsoleTheme
+import dev.fortress.ui.NetworkTab
 import dev.fortress.ui.OfflinePanel
 import dev.fortress.ui.PinLock
 import dev.fortress.ui.PinLockScreen
 import dev.fortress.ui.ScannerTab
+import dev.fortress.ui.ShieldTab
 
 /**
  * Main console — now the Compose port of the web command center.
@@ -49,6 +51,8 @@ class ConsoleActivity : AppCompatActivity() {
 
         val rooted = intent.getBooleanExtra(MainActivity.EXTRA_ROOTED, false)
         val magisk = intent.getBooleanExtra(MainActivity.EXTRA_MAGISK, false)
+        ConsoleRuntime.rooted = rooted
+        ConsoleRuntime.magisk = magisk
 
         setContent {
             FortressConsoleTheme {
@@ -107,8 +111,8 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                     when (selectedTab) {
                         0 -> DashboardTab()
                         1 -> ScannerTab()
-                        2 -> OfflinePanel("NETWORK TAP", phase = 3)
-                        3 -> OfflinePanel("SHIELD", phase = 3)
+                        2 -> NetworkTab()
+                        3 -> ShieldTab()
                         4 -> OfflinePanel("CVE FEED", phase = 4)
                         else -> OfflinePanel("FORENSICS", phase = 4)
                     }

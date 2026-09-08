@@ -51,6 +51,12 @@ class PacketVpnService : VpnService() {
         super.onCreate()
         ConsoleActivity.createNotificationChannels(this)
         monitor = TrafficMonitor(this, FirewallManager(this))
+        // Mirror every classified packet into TapCenter so the Network tab
+        // (and any future surface) can consume live telemetry without holding
+        // a service reference.
+        scope.launch {
+            monitor.events.collect { TapCenter.emit(it) }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -120,6 +126,7 @@ class PacketVpnService : VpnService() {
         isRunning = false
         runCatching { tun?.close() }
         tun = null
+        TapCenter.reset()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
