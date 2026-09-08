@@ -86,8 +86,9 @@ private val TABS = listOf("DASH", "SCAN", "NET", "SHIELD", "CVE", "FORENSICS")
 
 @Composable
 private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: String) {
+    val context = LocalContext.current
     var booted by remember { mutableStateOf(false) }
-    var locked by remember { mutableStateOf(PinLock.isEnabled(LocalContext.current)) }
+    var locked by remember { mutableStateOf(PinLock.isEnabled(context)) }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Box(Modifier.fillMaxSize().background(ConsoleColors.Bg)) {
