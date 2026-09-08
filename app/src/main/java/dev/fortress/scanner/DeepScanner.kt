@@ -160,7 +160,8 @@ class DeepScanner(private val context: Context) {
         // /data/adb/modules is only traversable with root; a SecurityException on
         // non-rooted devices is the normal path, not an error condition.
         try {
-            val modules = File("/data/adb/modules").listFiles() ?: emptyList()
+            val modulesDir = File("/data/adb/modules")
+            val modules: List<File> = modulesDir.listFiles() ?: emptyList()
             for (m in modules) {
                 val disableFlag = File(m, "disable").exists()
                 emit(ScanProgress.Detail(3, "module ${m.name}${if (disableFlag) " [disabled]" else ""}"))
