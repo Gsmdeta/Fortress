@@ -40,12 +40,13 @@ class MainActivity : AppCompatActivity() {
         // No layout XML in this delivery — a minimal programmatic splash keeps
         // the triage output visible without res/ churn. The background is set
         // explicitly so the splash stays zinc-950 even if the window theme
-        // ever drifts; paddings go through dp() for density independence.
+        // ever drifts; paddings are density-independent via dpPx().
+        val density = resources.displayMetrics.density
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#09090B"))
-            setPadding(dpPx(this, 24), dpPx(this, 24), dpPx(this, 24), dpPx(this, 24))
+            setPadding(dpPx(density, 24), dpPx(density, 24), dpPx(density, 24), dpPx(density, 24))
         }
         status = TextView(this).apply {
             textSize = 14f

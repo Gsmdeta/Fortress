@@ -47,9 +47,10 @@ class ScannerFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         val ctx = requireContext()
+        val density = ctx.resources.displayMetrics.density
         val root = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 20))
+            setPadding(dpPx(density, 20), dpPx(density, 20), dpPx(density, 20), dpPx(density, 20))
             setBackgroundColor(Color.parseColor("#09090B"))
         }
 

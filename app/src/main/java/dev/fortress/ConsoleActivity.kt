@@ -42,6 +42,7 @@ class ConsoleActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createNotificationChannels(this)
+        val density = resources.displayMetrics.density
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -52,7 +53,7 @@ class ConsoleActivity : AppCompatActivity() {
         val tabBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setBackgroundColor(Color.parseColor("#18181B"))
-            setPadding(dpPx(this, 8), dpPx(this, 12), dpPx(this, 8), dpPx(this, 12))
+            setPadding(dpPx(density, 8), dpPx(density, 12), dpPx(density, 8), dpPx(density, 12))
         }
         val tabs = tabLabels.map { label ->
             TextView(this).apply {
@@ -61,10 +62,10 @@ class ConsoleActivity : AppCompatActivity() {
                 letterSpacing = 0.15f
                 gravity = Gravity.CENTER
                 setTextColor(Color.parseColor("#A1A1AA"))
-                setPadding(dpPx(this, 16), dpPx(this, 12), dpPx(this, 16), dpPx(this, 12))
+                setPadding(dpPx(density, 16), dpPx(density, 12), dpPx(density, 16), dpPx(density, 12))
                 // minWidth keeps the 6 tabs readable on narrow phones (the
                 // strip scrolls) while the weight spreads them on tablets.
-                minWidth = dpPx(this, 76)
+                minWidth = dpPx(density, 76)
                 layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
                 setOnClickListener { pager.setCurrentItem(tabLabels.indexOf(label), true) }
             }.also(tabBar::addView)
@@ -221,11 +222,12 @@ class ForensicsFragment : Fragment() {
  */
 internal fun Fragment.panel(title: String, body: String): ScrollView {
     val ctx = requireContext()
+    val density = ctx.resources.displayMetrics.density
     val content = TextView(ctx).apply {
         setTextColor(Color.parseColor("#D4D4D8"))
         textSize = 13f
         typeface = android.graphics.Typeface.MONOSPACE
-        setPadding(dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 20), dpPx(ctx, 40))
+        setPadding(dpPx(density, 20), dpPx(density, 20), dpPx(density, 20), dpPx(density, 40))
         text = buildString {
             appendLine("■ $title")
             appendLine()

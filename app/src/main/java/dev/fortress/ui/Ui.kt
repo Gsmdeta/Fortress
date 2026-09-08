@@ -1,7 +1,5 @@
 package dev.fortress.ui
 
-import android.content.Context
-
 /**
  * Density-independent dp→px conversion for the programmatic console layouts.
  *
@@ -9,9 +7,11 @@ import android.content.Context
  * high-density phones and oversized on low-density tablets; every console
  * screen now sizes through this helper so spacing scales with the device.
  *
- * Plain function (not a Context extension) so every call site resolves
- * identically under K2 regardless of the surrounding implicit receivers
- * (apply blocks, Fragments, activities).
+ * Takes the raw screen density (a Float) instead of a Context/View so the
+ * call sites carry no object-typed arguments at all:
+ *
+ *     val d = resources.displayMetrics.density
+ *     setPadding(dpPx(d, 8), dpPx(d, 12), ...)
  */
-internal fun dpPx(context: Context, value: Int): Int =
-    (value * context.resources.displayMetrics.density + 0.5f).toInt()
+internal fun dpPx(density: Float, value: Int): Int =
+    (value * density + 0.5f).toInt()
