@@ -1,6 +1,10 @@
 package dev.fortress.ui
 
 import android.content.Context
+import dev.fortress.data.FindingEntry
+import dev.fortress.data.PosturePointData
+import dev.fortress.data.ScanSession
+import dev.fortress.data.SessionStore
 import dev.fortress.scanner.DeepScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,12 +22,14 @@ import kotlinx.coroutines.launch
  * tab would die with the composable, so the DeepScanner + its derived UI
  * streams live here and every tab simply collects them.
  *
- * Phase 2 adds persistence on top (SessionStore writes Finished results).
+ * Finished scans are persisted through [SessionStore] and appended to the
+ * posture history so the Dashboard chart reflects real scan outcomes.
  */
 object ScanCenter {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var scanner: DeepScanner? = null
+    private var store: SessionStore? = null
     private var collectorStarted = false
     private var scanJob: Job? = null
 
@@ -46,9 +52,12 @@ object ScanCenter {
     /** Idempotent: wires the progress collector once per process. */
     fun ensure(context: Context) {
         if (collectorStarted) return
-        scanner = DeepScanner(context.applicationContext)
+        val appContext = context.applicationContext
+        val s = DeepScanner(appContext)
+        scanner = s
+        store = SessionStore(appContext)
         scope.launch {
-            scanner!!.progress.collect { p ->
+            s.progress.collect { p ->
                 _progress.value = p
                 when (p) {
                     is DeepScanner.ScanProgress.Phase ->
@@ -61,6 +70,7 @@ object ScanCenter {
                     }
                     is DeepScanner.ScanProgress.Finished -> {
                         appendLog("✔ scan finished — ${p.findings} finding(s), score ${p.score}")
+                        persist(p)
                         _scanning.value = false
                     }
                     DeepScanner.ScanProgress.Idle -> Unit
@@ -87,6 +97,36 @@ object ScanCenter {
         scanJob = null
         _scanning.value = false
         appendLog("■ scan aborted by operator")
+    }
+
+    /** Persists the finished scan as a session + a posture history point. */
+    private fun persist(finished: DeepScanner.ScanProgress.Finished) {
+        val st = store ?: return
+        try {
+            val number = st.sessionCount() + 1
+            st.saveSession(
+                ScanSession(
+                    id = "scan-$number-${finished.score}",
+                    label = "Deep scan #$number",
+                    startedAt = startedAtMs,
+                    finishedAt = System.currentTimeMillis(),
+                    score = finished.score,
+                    verdict = finished.verdict,
+                    findings = _findings.value.map { f ->
+                        FindingEntry(f.severity.name, f.title, f.detail)
+                    },
+                )
+            )
+            st.appendPosture(
+                PosturePointData(
+                    score = finished.score,
+                    label = "Deep scan #$number",
+                    ts = System.currentTimeMillis(),
+                )
+            )
+        } catch (e: Exception) {
+            appendLog("  persistence warning: ${e.message}")
+        }
     }
 
     private fun appendLog(line: String) {

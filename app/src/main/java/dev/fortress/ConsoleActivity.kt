@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.fortress.ui.BootSequenceOverlay
 import dev.fortress.ui.ConsoleColors
 import dev.fortress.ui.ConsoleTabBar
+import dev.fortress.ui.DashboardTab
 import dev.fortress.ui.FortressConsoleTheme
 import dev.fortress.ui.OfflinePanel
 import dev.fortress.ui.PinLock
@@ -104,7 +105,7 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                 ConsoleTabBar(labels = TABS, selected = selectedTab, onSelect = { selectedTab = it })
                 Box(Modifier.fillMaxSize().weight(1f)) {
                     when (selectedTab) {
-                        0 -> OfflinePanel("POSTURE DASHBOARD", phase = 2)
+                        0 -> DashboardTab()
                         1 -> ScannerTab()
                         2 -> OfflinePanel("NETWORK TAP", phase = 3)
                         3 -> OfflinePanel("SHIELD", phase = 3)
