@@ -5,7 +5,7 @@ Fortress web command center (`dev.fortress.console` APK). The tree ships a
 Gradle wrapper (Gradle 8.10.2) and a GitHub Actions workflow, so it builds
 out of the box — locally or on CI — with no Android Studio required.
 
-- **Package:** `dev.fortress.console` · versionCode `12` · versionName `1.2.0`
+- **Package:** `dev.fortress.console` · versionCode `13` · versionName `1.3.0`
 - **SDK targets:** minSdk 26 (Android 8.0) · compileSdk/targetSdk 35
 - **Language stack:** Kotlin 2.0 · AGP 8.7 · coroutines/Flow · NDK (C++17) for native heuristics
 - **ABIs:** `arm64-v8a`, `armeabi-v7a` (root heuristics are meaningless on x86 emulator images)
@@ -62,12 +62,19 @@ pinned toolchain (`ndk;27.0.12077973`, `cmake;3.22.1`), and runs
 
 | Console tab | Class(es) | Root required? | Notes |
 | --- | --- | --- | --- |
-| Dashboard | `ConsoleActivity.DashboardFragment`, `ui.ProjectionView` | no | posture curve w/ tap + DPAD inspection, a11y readouts |
-| Scanner | `scanner.DeepScanner`, `scanner.RootkitHeuristics`, `ui.ScannerFragment`, `cpp/fortress-native.cpp` | degrades without | 4 phases: /proc walk → memory maps → file audit → native kernel heuristics |
-| Network | `net.PacketVpnService`, `net.TrafficMonitor` | attribution improves with | VpnService TUN tap (10.111.0.2/32, MTU 32768), per-app attribution, verdict feed |
-| Shield | `firewall.FirewallManager`, `guard.RealtimeGuard`, `tasks.TaskManager` | root path optional | per-app wifi/data rules (VPN drop + iptables owner-match), module/package/clipboard watch, force-stop |
-| CVE | `cve.CveRepository` + `assets/cve-db.json` | yes, for mitigation shell cmds | 8 bundled CVEs mirrored from the web console; local mitigations are sysctl/chmod/chcon only |
-| Forensics | scan report export | no | markdown mirror of the web `sessionToMarkdown()` |
+| Boot + PIN gate | `ui.BootSequenceOverlay`, `ui.PinLockScreen` | no | launch flow: triage boot lines → PIN lock (default 1357, prefs-configurable) → console |
+| Dashboard | `ui.DashboardTab`, `data.SessionStore` | no | animated score ring, real engine stat chips, quick actions, posture history chart with tap-inspect, persisted sessions |
+| Scanner | `scanner.DeepScanner`, `scanner.RootkitHeuristics`, `ui.ScanCenter`, `ui.ScannerTab`, `cpp/fortress-native.cpp` | degrades without | 4 phases: /proc walk → memory maps → file audit → native kernel heuristics; scans survive tab switches |
+| Network | `net.PacketVpnService`, `net.TrafficMonitor`, `net.TapCenter`, `firewall.FirewallManager` | attribution improves with | VPN consent + tap control, live packet feed + counters, per-app block rules, iptables path (root) |
+| Shield | `guard.RealtimeGuard`, `guard.GuardCenter`, `tasks.TaskManager` | root path optional | guard start/stop + live event feed, boot auto-start pref, process list with force-stop |
+| CVE | `ui.CveTab`, `cve.CveRepository` + `assets/cve-db.json` | yes, for mitigation shell cmds | 8 bundled CVEs, one-tap local mitigations, PATCHED badges persisted |
+| Forensics | `ui.ForensicsTab` | no | session detail tables, kernel snapshot chips, markdown export via share sheet |
+
+**Console UI:** Jetpack Compose (Kotlin 2.0 native compiler plugin) porting the
+web command center's design language — zinc-950 background, zinc-900/60
+panels with zinc-800 borders, emerald-400/amber-400/red-500 accents only,
+monospace readouts, uppercase spaced micro-labels, 44dp touch targets.
+Responsive: bottom tab strip on phones, side rail on ≥600dp screens.
 
 **Optional:** `vt.VirusTotalClient` — hash-first VirusTotal lookup; upload only
 with explicit user consent, API key stored in EncryptedSharedPreferences,
@@ -137,7 +144,7 @@ app/src/main/
     cve/                  CveRepository
     firewall/             FirewallManager
     tasks/                TaskManager
-    ui/                   ProjectionView · ScannerFragment
+    ui/                   ConsoleTheme (+ kit) · BootSequence · PinLock · ScanCenter · Dashboard/Scanner/Network/Shield/Cve/Forensics tabs
   res/                    values (strings · colors · FortressTheme) + adaptive launcher icons (drawable/mipmap)
   assets/cve-db.json      8-entry catalog mirroring the web CVE_CATALOG
 ```

@@ -14,8 +14,8 @@ android {
         // ClipboardManager.OnPrimaryClipChangedListener behave consistently from here.
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.2.0"
+        versionCode = 13
+        versionName = "1.3.0"
 
         // Pinned NDK — CI (and local builds) install exactly this version via
         // sdkmanager ("ndk;27.0.12077973") so AGP never guesses.

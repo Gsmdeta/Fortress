@@ -240,17 +240,28 @@ fun ConsoleTabBar(labels: List<String>, selected: Int, onSelect: (Int) -> Unit) 
     }
 }
 
-/** Honest interim screen for tabs whose phase lands later in the rebuild. */
+/** Vertical tab rail for wide screens (>= 600dp) — the responsive counterpart
+ *  of the bottom [ConsoleTabBar]. */
 @Composable
-fun OfflinePanel(title: String, phase: Int) {
-    Column(Modifier.fillMaxSize().padding(16.dp)) {
-        ConsolePanel(label = title) {
-            StatusChip("OFFLINE · PHASE $phase", ChipKind.WARN)
-            Spacer(Modifier.height(12.dp))
-            MonoText(
-                "module wires to its live engine in phase $phase of the console rebuild — scanner tab is live now",
-                color = ConsoleColors.TextMuted,
-            )
+fun ConsoleSideRail(labels: List<String>, selected: Int, modifier: Modifier = Modifier, onSelect: (Int) -> Unit) {
+    Column(modifier.background(ConsoleColors.PanelSolid)) {
+        labels.forEachIndexed { i, label ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable { onSelect(i) }
+                    .padding(horizontal = 20.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Text(
+                    text = label,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 11.sp,
+                    letterSpacing = 1.sp,
+                    color = if (i == selected) ConsoleColors.Emerald else ConsoleColors.TextMuted,
+                )
+            }
         }
     }
 }

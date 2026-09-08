@@ -8,8 +8,13 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -106,19 +111,38 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                 onDismiss = { booted = true },
             )
             locked -> PinLockScreen(onUnlock = { locked = false })
-            else -> Column(Modifier.fillMaxSize()) {
-                ConsoleTabBar(labels = TABS, selected = selectedTab, onSelect = { selectedTab = it })
-                Box(Modifier.fillMaxSize().weight(1f)) {
-                    when (selectedTab) {
-                        0 -> DashboardTab()
-                        1 -> ScannerTab()
-                        2 -> NetworkTab()
-                        3 -> ShieldTab()
-                        4 -> CveTab()
-                        else -> ForensicsTab()
+            else -> BoxWithConstraints(Modifier.fillMaxSize()) {
+                // responsive shell: bottom tab strip on phones, side rail on
+                // tablets / landscape (>= 600dp width)
+                if (maxWidth >= 600.dp) {
+                    Row(Modifier.fillMaxSize()) {
+                        ConsoleSideRail(
+                            labels = TABS,
+                            selected = selectedTab,
+                            modifier = Modifier.width(170.dp).fillMaxHeight(),
+                            onSelect = { selectedTab = it },
+                        )
+                        Box(Modifier.weight(1f).fillMaxSize()) { TabContent(selectedTab) }
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        ConsoleTabBar(labels = TABS, selected = selectedTab, onSelect = { selectedTab = it })
+                        Box(Modifier.fillMaxSize().weight(1f)) { TabContent(selectedTab) }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TabContent(selectedTab: Int) {
+    when (selectedTab) {
+        0 -> DashboardTab()
+        1 -> ScannerTab()
+        2 -> NetworkTab()
+        3 -> ShieldTab()
+        4 -> CveTab()
+        else -> ForensicsTab()
     }
 }
