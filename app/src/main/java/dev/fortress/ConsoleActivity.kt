@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import dev.fortress.ui.BootSequenceOverlay
 import dev.fortress.ui.ConsoleColors
+import dev.fortress.ui.ConsoleSideRail
 import dev.fortress.ui.ConsoleTabBar
 import dev.fortress.ui.CveTab
 import dev.fortress.ui.DashboardTab
