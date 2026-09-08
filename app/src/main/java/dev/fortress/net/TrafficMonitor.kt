@@ -84,7 +84,16 @@ class TrafficMonitor(
         }
         val uid = attribute(srcPort)
         val (verdict, reason) = firewall.verdictFor(uid, proto, dstPort)
-        emit(PacketEvent(labelFor(uid), uid, dst, dstPort, proto, len, verdict, reason))
+        emit(PacketEvent(
+            app = labelFor(uid),
+            uid = uid,
+            dst = dst,
+            port = dstPort,
+            proto = proto,
+            bytes = len,
+            verdict = verdict,
+            reason = reason
+        ))
     }
 
     // -- IPv6 -----------------------------------------------------------------
@@ -102,7 +111,16 @@ class TrafficMonitor(
         val dstPort = ((p[base + 2].toInt() and 0xFF) shl 8) or (p[base + 3].toInt() and 0xFF)
         val uid = attribute(srcPort)
         val (verdict, reason) = firewall.verdictFor(uid, proto, dstPort)
-        emit(PacketEvent(labelFor(uid), uid, dst, dstPort, proto, len, verdict, reason))
+        emit(PacketEvent(
+            app = labelFor(uid),
+            uid = uid,
+            dst = dst,
+            port = dstPort,
+            proto = proto,
+            bytes = len,
+            verdict = verdict,
+            reason = reason
+        ))
     }
 
     // -- attribution ----------------------------------------------------------

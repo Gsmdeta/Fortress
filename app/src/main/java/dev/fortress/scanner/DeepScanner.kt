@@ -161,12 +161,14 @@ class DeepScanner(private val context: Context) {
         // non-rooted devices is the normal path, not an error condition.
         try {
             val modulesDir = File("/data/adb/modules")
-            val modules: List<File> = modulesDir.listFiles() ?: emptyList()
-            for (m in modules) {
-                val disableFlag = File(m, "disable").exists()
-                emit(ScanProgress.Detail(3, "module ${m.name}${if (disableFlag) " [disabled]" else ""}"))
-                if (m.name.lowercase().contains("shamiko") || m.name.lowercase().contains("hide")) {
-                    addFinding(Severity.WARN, "hide-capable module", "${m.name} can conceal root state from scanners")
+            val modules: Array<File>? = modulesDir.listFiles()
+            if (modules != null) {
+                for (m in modules) {
+                    val disableFlag = File(m, "disable").exists()
+                    emit(ScanProgress.Detail(3, "module ${m.name}${if (disableFlag) " [disabled]" else ""}"))
+                    if (m.name.lowercase().contains("shamiko") || m.name.lowercase().contains("hide")) {
+                        addFinding(Severity.WARN, "hide-capable module", "${m.name} can conceal root state from scanners")
+                    }
                 }
             }
         } catch (e: SecurityException) {
