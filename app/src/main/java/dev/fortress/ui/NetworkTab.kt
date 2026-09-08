@@ -94,14 +94,16 @@ fun NetworkTab() {
         val pm = context.packageManager
         val self = context.packageName
         appRows = pm.getInstalledPackages(0)
-            .asSequence()
-            .filter { it.applicationInfo != null }
-            .filter { it.packageName != self }
-            .filter { it.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM == 0 }
-            .sortedBy { (pm.getApplicationLabel(it.applicationInfo) ?: it.packageName).toString().lowercase() }
+            .mapNotNull { info ->
+                val ai = info.applicationInfo ?: return@mapNotNull null
+                if (info.packageName == self) return@mapNotNull null
+                if (ai.flags and ApplicationInfo.FLAG_SYSTEM != 0) return@mapNotNull null
+                val label = (pm.getApplicationLabel(ai) ?: info.packageName).toString()
+                Triple(info.packageName, label, ai)
+            }
+            .sortedBy { it.second.lowercase() }
             .take(120)
-            .map { AppRuleRow(it.packageName, pm.getApplicationLabel(it.applicationInfo).toString(), it.packageName in blocked, false) }
-            .toList()
+            .map { (pkg, label, _) -> AppRuleRow(pkg, label, pkg in blocked, false) }
     }
     LaunchedEffect(rulesExpanded) {
         if (rulesExpanded) {

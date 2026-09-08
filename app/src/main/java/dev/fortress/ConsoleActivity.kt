@@ -22,10 +22,11 @@ import androidx.compose.ui.platform.LocalContext
 import dev.fortress.ui.BootSequenceOverlay
 import dev.fortress.ui.ConsoleColors
 import dev.fortress.ui.ConsoleTabBar
+import dev.fortress.ui.CveTab
 import dev.fortress.ui.DashboardTab
+import dev.fortress.ui.ForensicsTab
 import dev.fortress.ui.FortressConsoleTheme
 import dev.fortress.ui.NetworkTab
-import dev.fortress.ui.OfflinePanel
 import dev.fortress.ui.PinLock
 import dev.fortress.ui.PinLockScreen
 import dev.fortress.ui.ScannerTab
@@ -113,8 +114,8 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                         1 -> ScannerTab()
                         2 -> NetworkTab()
                         3 -> ShieldTab()
-                        4 -> OfflinePanel("CVE FEED", phase = 4)
-                        else -> OfflinePanel("FORENSICS", phase = 4)
+                        4 -> CveTab()
+                        else -> ForensicsTab()
                     }
                 }
             }

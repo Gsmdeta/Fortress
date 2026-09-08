@@ -59,9 +59,6 @@ class RealtimeGuard : android.app.Service() {
     private var packageReceiver: BroadcastReceiver? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
 
-    private val _events = MutableSharedFlow<GuardEvent>(extraBufferCapacity = 64)
-    val events: SharedFlow<GuardEvent> = _events
-
     override fun onCreate() {
         super.onCreate()
         ConsoleActivity.createNotificationChannels(this)
@@ -99,7 +96,7 @@ class RealtimeGuard : android.app.Service() {
                 if (path == null) return
                 val removed = (event and DELETE) != 0
                 val type = if (removed) GuardEvent.TYPE_MODULE_REMOVED else GuardEvent.TYPE_MODULE_ADDED
-                _events.tryEmit(GuardEvent(type, path))
+                GuardCenter.emit(GuardEvent(type, path))
                 if (type == GuardEvent.TYPE_MODULE_ADDED) {
                     notifyUser("module installed: $path", "review it in Shield → Guard feed")
                 }
@@ -124,7 +121,7 @@ class RealtimeGuard : android.app.Service() {
                     Intent.ACTION_PACKAGE_REPLACED -> GuardEvent.TYPE_PACKAGE_REPLACED
                     else -> GuardEvent.TYPE_PACKAGE_REMOVED
                 }
-                _events.tryEmit(GuardEvent(type, pkg))
+                GuardCenter.emit(GuardEvent(type, pkg))
             }
         }.also { receiver ->
             if (Build.VERSION.SDK_INT >= 33) {
@@ -143,7 +140,7 @@ class RealtimeGuard : android.app.Service() {
         clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
             // We cannot (and do not try to) read the clip in background on Q+;
             // emitting a timestamped event is the whole feature.
-            _events.tryEmit(GuardEvent(GuardEvent.TYPE_CLIPBOARD, "primary clip changed"))
+            GuardCenter.emit(GuardEvent(GuardEvent.TYPE_CLIPBOARD, "primary clip changed"))
         }.also { cm.addPrimaryClipChangedListener(it) }
     }
 

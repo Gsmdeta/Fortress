@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.fortress.guard.GuardCenter
 import dev.fortress.guard.GuardEvent
 import dev.fortress.guard.RealtimeGuard
 import dev.fortress.tasks.TaskManager
@@ -56,7 +57,7 @@ fun ShieldTab() {
     var autoStart by remember { mutableStateOf(prefs.getBoolean("guard_auto_start", false)) }
     val guardEvents = remember { mutableStateListOf<GuardEvent>() }
     LaunchedEffect(Unit) {
-        RealtimeGuard.events.collect { e ->
+        GuardCenter.events.collect { e ->
             guardEvents.add(0, e)
             while (guardEvents.size > 40) guardEvents.removeAt(guardEvents.size - 1)
         }
