@@ -3,117 +3,60 @@ package dev.fortress
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.graphics.Color
 import android.os.Bundle
-import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.HorizontalScrollView
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.Lifecycle
-import androidx.viewpager2.adapter.FragmentStateAdapter
-import androidx.viewpager2.widget.ViewPager2
-import dev.fortress.net.PacketVpnService
-import dev.fortress.ui.ScannerFragment
-import dev.fortress.ui.dpPx
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import dev.fortress.ui.BootSequenceOverlay
+import dev.fortress.ui.ConsoleColors
+import dev.fortress.ui.ConsoleTabBar
+import dev.fortress.ui.FortressConsoleTheme
+import dev.fortress.ui.OfflinePanel
+import dev.fortress.ui.PinLock
+import dev.fortress.ui.PinLockScreen
+import dev.fortress.ui.ScannerTab
 
 /**
- * Main dashboard: six tabs mirroring the web command center
- * (Dashboard · Scanner · Network · Shield · CVE · Forensics).
+ * Main console — now the Compose port of the web command center.
  *
- * WHY a hand-rolled bottom bar instead of BottomNavigationView: Material's
- * BottomNavigationView hard-fails above 5 menu items and the console contract
- * calls for exactly 6 tabs. A HorizontalScrollView of mono-label TextViews is
- * dependency-free, keeps the 44dp touch targets, and survives any tab count.
+ * Launch flow mirrors the demo: boot sequence overlay (staggered [ok] lines
+ * over REAL triage state from MainActivity) → PIN lock gate → 6-tab console.
  *
- * All screens are constructed programmatically (no layout XML) — see the
- * build.gradle note; fragment stubs live at the bottom of this file so the
- * delivered tree stays within the documented file manifest.
+ * The console is a Compose tab shell; each tab collects its live engine
+ * streams (ScanCenter, later RealtimeGuard/TrafficMonitor) so switching tabs
+ * never stops running work. Tab screens are wired phase by phase:
+ * SCANNER is live in this build; the remaining tabs show an honest OFFLINE
+ * panel until their phase lands.
  */
 class ConsoleActivity : AppCompatActivity() {
-
-    private lateinit var pager: ViewPager2
-    private val tabLabels = arrayOf("DASH", "SCAN", "NET", "SHIELD", "CVE", "FORENSICS")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         createNotificationChannels(this)
-        val density = resources.displayMetrics.density
 
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#09090B")) // zinc-950 console bg
-        }
+        val rooted = intent.getBooleanExtra(MainActivity.EXTRA_ROOTED, false)
+        val magisk = intent.getBooleanExtra(MainActivity.EXTRA_MAGISK, false)
 
-        // --- tab bar -----------------------------------------------------
-        val tabBar = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setBackgroundColor(Color.parseColor("#18181B"))
-            setPadding(dpPx(density, 8), dpPx(density, 12), dpPx(density, 8), dpPx(density, 12))
-        }
-        val tabs = tabLabels.map { label ->
-            TextView(this).apply {
-                text = label
-                textSize = 12f
-                letterSpacing = 0.15f
-                gravity = Gravity.CENTER
-                setTextColor(Color.parseColor("#A1A1AA"))
-                setPadding(dpPx(density, 16), dpPx(density, 12), dpPx(density, 16), dpPx(density, 12))
-                // minWidth keeps the 6 tabs readable on narrow phones (the
-                // strip scrolls) while the weight spreads them on tablets.
-                minWidth = dpPx(density, 76)
-                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-                setOnClickListener { pager.setCurrentItem(tabLabels.indexOf(label), true) }
-            }.also(tabBar::addView)
-        }
-
-        val tabScroll = HorizontalScrollView(this).apply {
-            addView(tabBar)
-            isHorizontalScrollBarEnabled = false
-            // Spread tabs across the full width whenever they fit (the bar's
-            // natural width is smaller than the viewport), e.g. on tablets.
-            isFillViewport = true
-        }
-
-        // --- pager -------------------------------------------------------
-        pager = ViewPager2(this).apply {
-            adapter = ConsolePagerAdapter(supportFragmentManager, lifecycle)
-            offscreenPageLimit = tabLabels.size
-            registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
-                override fun onPageSelected(position: Int) {
-                    tabs.forEachIndexed { i, tv ->
-                        tv.setTextColor(
-                            if (i == position) Color.parseColor("#34D399") // emerald-400 accent
-                            else Color.parseColor("#A1A1AA")
-                        )
-                    }
-                }
-            })
-        }
-
-        root.addView(tabScroll, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        root.addView(pager, LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
-    }
-
-    private class ConsolePagerAdapter(
-        fm: FragmentManager,
-        lifecycle: Lifecycle,
-    ) : FragmentStateAdapter(fm, lifecycle) {
-        override fun getItemCount() = 6
-        override fun createFragment(position: Int): Fragment = when (position) {
-            0 -> DashboardFragment()
-            1 -> ScannerFragment()
-            2 -> NetworkFragment()
-            3 -> ShieldFragment()
-            4 -> CveFragment()
-            else -> ForensicsFragment()
+        setContent {
+            FortressConsoleTheme {
+                FortressConsoleApp(
+                    rooted = rooted,
+                    magisk = magisk,
+                    versionName = BuildConfig.VERSION_NAME,
+                )
+            }
         }
     }
 
@@ -139,105 +82,36 @@ class ConsoleActivity : AppCompatActivity() {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Tab stubs — each renders a mono console panel; full wiring lands per-feature
-// (these correspond 1:1 to the web console tabs and their sandbox simulations).
-// ---------------------------------------------------------------------------
+private val TABS = listOf("DASH", "SCAN", "NET", "SHIELD", "CVE", "FORENSICS")
 
-/** Posture summary + last scan verdict readout. */
-class DashboardFragment : Fragment() {
-    override fun onCreateView(
-        inflater: android.view.LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ) = panel(
-        "POSTURE DASHBOARD",
-        "score history renders in dev.fortress.ui.ProjectionView\n" +
-            "last verdict: pending first scan\n" +
-            "guard feed: attach RealtimeGuard.events flow here"
-    )
-}
+@Composable
+private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: String) {
+    var booted by remember { mutableStateOf(false) }
+    var locked by remember { mutableStateOf(PinLock.isEnabled(LocalContext.current)) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
-/** Packet tap control + live feed (binds PacketVpnService / TrafficMonitor). */
-class NetworkFragment : Fragment() {
-    override fun onCreateView(
-        inflater: android.view.LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ) = panel(
-        "NETWORK TAP",
-        "vpn: ${PacketVpnService.isRunning} · tap START to request VpnService consent\n" +
-            "packet events stream from TrafficMonitor.events (Flow<PacketEvent>)\n" +
-            "per-app rules live in dev.fortress.firewall.FirewallManager"
-    )
-}
-
-/** Firewall rules + realtime guard + task manager summary. */
-class ShieldFragment : Fragment() {
-    override fun onCreateView(
-        inflater: android.view.LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ) = panel(
-        "SHIELD",
-        "firewall: per-app wifi/data rules (SharedPreferences persisted)\n" +
-            "guard: FileObserver on /data/adb/modules + package add/remove\n" +
-            "tasks: force-stop via RootShell `am force-stop`"
-    )
-}
-
-/** Bundled CVE database with local mitigation stubs. */
-class CveFragment : Fragment() {
-    override fun onCreateView(
-        inflater: android.view.LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ) = panel(
-        "CVE FEED",
-        "catalog: assets/cve-db.json (8 entries, mirrors web CVE_CATALOG)\n" +
-            "softwarePatchAvailable entries expose CveRepository.applySoftwarePatch()\n" +
-            "mitigations are chmod/chcon/sysctl only — never binary patching"
-    )
-}
-
-/** Raw finding explorer + report export. */
-class ForensicsFragment : Fragment() {
-    override fun onCreateView(
-        inflater: android.view.LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?,
-    ) = panel(
-        "FORENSICS",
-        "phase logs from DeepScanner.progress (StateFlow<ScanProgress>)\n" +
-            "native heuristics report via RootkitHeuristics.scanSyscallTable()\n" +
-            "markdown export mirrors the web sessionToMarkdown() renderer"
-    )
-}
-
-/**
- * Shared programmatic panel builder for the console stubs.
- *
- * Wrapped in a ScrollView so long readouts stay reachable on small screens and
- * in landscape; all paddings are density-independent (dp).
- */
-internal fun Fragment.panel(title: String, body: String): ScrollView {
-    val ctx = requireContext()
-    val density = ctx.resources.displayMetrics.density
-    val content = TextView(ctx).apply {
-        setTextColor(Color.parseColor("#D4D4D8"))
-        textSize = 13f
-        typeface = android.graphics.Typeface.MONOSPACE
-        setPadding(dpPx(density, 20), dpPx(density, 20), dpPx(density, 20), dpPx(density, 40))
-        text = buildString {
-            appendLine("■ $title")
-            appendLine()
-            append(body)
+    Box(Modifier.fillMaxSize().background(ConsoleColors.Bg)) {
+        when {
+            !booted -> BootSequenceOverlay(
+                rooted = rooted,
+                magisk = magisk,
+                versionName = versionName,
+                onDismiss = { booted = true },
+            )
+            locked -> PinLockScreen(onUnlock = { locked = false })
+            else -> Column(Modifier.fillMaxSize()) {
+                ConsoleTabBar(labels = TABS, selected = selectedTab, onSelect = { selectedTab = it })
+                Box(Modifier.fillMaxSize().weight(1f)) {
+                    when (selectedTab) {
+                        0 -> OfflinePanel("POSTURE DASHBOARD", phase = 2)
+                        1 -> ScannerTab()
+                        2 -> OfflinePanel("NETWORK TAP", phase = 3)
+                        3 -> OfflinePanel("SHIELD", phase = 3)
+                        4 -> OfflinePanel("CVE FEED", phase = 4)
+                        else -> OfflinePanel("FORENSICS", phase = 4)
+                    }
+                }
+            }
         }
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-    }
-    return ScrollView(ctx).apply {
-        setBackgroundColor(Color.parseColor("#09090B"))
-        addView(content)
     }
 }

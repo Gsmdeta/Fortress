@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 }
 
 android {
@@ -65,10 +66,11 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
-    // Deliberately NO viewBinding / compose: every screen is built programmatically
-    // so the delivered tree carries no layout XML and stays diff-friendly.
+    // The console is a Jetpack Compose UI (rebuild for demo parity); the
+    // layout code is still 100% Kotlin, just declarative instead of Views.
     buildFeatures {
         buildConfig = true
+        compose = true
     }
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -78,9 +80,14 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
-    implementation("com.google.android.material:material:1.12.0")
-    implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+
+    // Compose console (versions resolved by the BOM; compiler ships with Kotlin 2.0)
+    implementation(platform("androidx.compose:compose-bom:2024.10.00"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.foundation:foundation")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.activity:activity-compose:1.9.2")
 
     // Coroutines drive the scan pipeline (StateFlow progress) and root shell I/O.
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
