@@ -1,5 +1,5 @@
 module.exports = {
-  updatedAt: "2026-11-16T14:12:00Z",
+  updatedAt: "2026-11-16T14:38:00Z",
   activePlan: "tasks/Plans.md",
   currentTask: {
     id: "F-001",
@@ -14,10 +14,10 @@ module.exports = {
       "AGENTS.md"
     ],
     blockedBy: null,
-    notes: "Phase 3 rollback ledger, VirusTotal hash lookup, realtime Download observer, task risk scoring, and release metadata complete. Main commit 637303dde2a37d56444676df295e2cbc065fc195 passed both Android workflows."
+    notes: "Phase 3 rollback ledger, VirusTotal hash lookup, realtime Download observer, task risk scoring, and release metadata complete. Main commit a4941e4f44f3594d33e2aa2b3e6b7f9bc8368303 passed both Android workflows, including strict release APK generation and artifact upload."
   },
   queue: [],
   done: [
-    { id: "F-001", summary: "Release Fortress 1.6.0 production hardening and cyber Material UI", date: "2026-11-16", commit: "637303dde2a37d56444676df295e2cbc065fc195" }
+    { id: "F-001", summary: "Release Fortress 1.6.0 production hardening and cyber Material UI", date: "2026-11-16", commit: "a4941e4f44f3594d33e2aa2b3e6b7f9bc8368303" }
   ]
 };
