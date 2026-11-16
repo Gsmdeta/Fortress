@@ -27,11 +27,14 @@ class ArtifactScanner(private val context: Context) {
     private val virusTotal = VirusTotalClient(context)
 
     suspend fun scan(rooted: Boolean, onDetail: suspend (String) -> Unit): Result = withContext(Dispatchers.IO) {
-        val candidates = if (rooted) rootCandidates() else localCandidates()
+        val prefs = context.getSharedPreferences("fortress_settings", Context.MODE_PRIVATE)
+        val limit = prefs.getInt("artifact_limit", MAX_FILES).coerceIn(100, 5_000)
+        val includeSystem = rooted && prefs.getBoolean("include_system_paths", true)
+        val candidates = if (rooted) rootCandidates(includeSystem, limit) else localCandidates(limit)
         val findings = mutableListOf<DeepScanner.ScanProgress.Finding>()
         var scanned = 0
         var bytes = 0L
-        for (path in candidates.take(MAX_FILES)) {
+        for (path in candidates.take(limit)) {
             val file = File(path)
             val length = if (rooted) rootSize(path) else file.length()
             if (length < 0 || length > MAX_FILE_BYTES) continue
@@ -54,23 +57,34 @@ class ArtifactScanner(private val context: Context) {
                 )
             }
         }
-        onDetail("artifact sweep complete: $scanned files · ${bytes / (1024 * 1024)} MiB")
+        onDetail("artifact sweep complete: $scanned/$limit files · ${bytes / (1024 * 1024)} MiB")
         Result(scanned, bytes, findings)
     }
 
-    private fun localCandidates(): List<String> = buildList {
+    private fun localCandidates(limit: Int): List<String> = buildList {
         listOf("/storage/emulated/0", "/sdcard", "/data/local/tmp").forEach { root ->
             File(root).walkTopDown()
                 .onEnter { it.canRead() }
                 .filter { it.isFile && it.length() <= MAX_FILE_BYTES }
-                .take(MAX_FILES)
+                .take(limit)
                 .forEach { add(it.absolutePath) }
         }
     }.distinct()
 
-    private suspend fun rootCandidates(): List<String> = RootShell.exec(
-        "find /storage/emulated/0 /data/local/tmp /data/adb/modules /system/app /system/priv-app -type f -size -20M 2>/dev/null | head -300"
-    ).output.filter { it.isNotBlank() }.distinct()
+    private suspend fun rootCandidates(includeSystem: Boolean, limit: Int): List<String> {
+        val roots = buildList {
+            add("/storage/emulated/0")
+            add("/data/local/tmp")
+            if (includeSystem) {
+                add("/data/adb/modules")
+                add("/system/app")
+                add("/system/priv-app")
+            }
+        }.joinToString(" ")
+        return RootShell.exec(
+            "find $roots -type f -size -20M 2>/dev/null | head -$limit"
+        ).output.filter { it.isNotBlank() }.distinct()
+    }
 
     private suspend fun rootSize(path: String): Long = RootShell.exec("stat -c %s ${quote(path)} 2>/dev/null").output
         .lastOrNull()?.trim()?.toLongOrNull() ?: -1L
