@@ -1,11 +1,11 @@
 module.exports = {
-  updatedAt: "2026-11-16T03:55:00Z",
+  updatedAt: "2026-11-16T14:12:00Z",
   activePlan: "tasks/Plans.md",
   currentTask: {
     id: "F-001",
     type: "enhancement",
     status: "done",
-    summary: "Complete the Fortress rooted Android security console hardening pass",
+    summary: "Release Fortress 1.6.0 production hardening pass",
     files: [
       "app/src/main/AndroidManifest.xml",
       "app/src/main/cpp/fortress-native.cpp",
@@ -14,10 +14,10 @@ module.exports = {
       "AGENTS.md"
     ],
     blockedBy: null,
-    notes: "Hardening and Material 3 cyber UI pass complete. GitHub Actions run 43800463607 passed source smoke, test, lintDebug, assembleDebug, native build, and APK packaging."
+    notes: "Phase 3 rollback ledger, VirusTotal hash lookup, realtime Download observer, task risk scoring, and release metadata complete. Main commit 637303dde2a37d56444676df295e2cbc065fc195 passed both Android workflows."
   },
   queue: [],
   done: [
-    { id: "F-001", summary: "Complete rooted security console and cyber Material UI", date: "2026-11-16", commit: "35deca41527ce3c3878dba1982ed8a08d953d80a" }
+    { id: "F-001", summary: "Release Fortress 1.6.0 production hardening and cyber Material UI", date: "2026-11-16", commit: "637303dde2a37d56444676df295e2cbc065fc195" }
   ]
 };
