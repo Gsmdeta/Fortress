@@ -49,7 +49,7 @@ jobs:
       # install the command-line tools (sdkmanager) explicitly. The action also
       # exports ANDROID_HOME for the sdkmanager steps below.
       - name: Set up Android SDK (cmdline-tools)
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
