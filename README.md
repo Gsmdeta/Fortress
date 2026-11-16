@@ -5,7 +5,7 @@ Fortress web command center (`dev.fortress.console` APK). The tree ships a
 Gradle wrapper (Gradle 8.10.2) and a GitHub Actions workflow, so it builds
 out of the box — locally or on CI — with no Android Studio required.
 
-- **Package:** `dev.fortress.console` · versionCode `15` · versionName `1.5.0`
+- **Package:** `dev.fortress.console` · versionCode `16` · versionName `1.6.0`
 - **SDK targets:** minSdk 26 (Android 8.0) · compileSdk/targetSdk 35
 - **Language stack:** Kotlin 2.0 · AGP 8.7 · coroutines/Flow · NDK (C++17) for native heuristics
 - **ABIs:** `arm64-v8a`, `armeabi-v7a` (root heuristics are meaningless on x86 emulator images)
@@ -114,7 +114,7 @@ hard rate limit 4 req/min.
 
 ```
 fortress_console/
-  module.prop                    # id, name, version v1.5.0 (versionCode 15)
+  module.prop                    # id, name, version v1.6.0 (versionCode 16)
   post-fs-data.sh                # no-op placeholder hook
   system/app/Fortress/Fortress.apk
 ```
@@ -142,7 +142,7 @@ stack in this reference build. While the tap is up, connectivity pauses by
 design; use the iptables path (root) for always-on enforcement. This is stated
 in code (`PacketVpnService` header) so nobody mistakes it for a bug.
 
-## 6. Release 1.5 hardening notes
+## 6. Release 1.6 hardening notes
 
 - JNI heuristics are optional and degrade to a visible limited-mode result when
   the device ABI cannot load the native library.

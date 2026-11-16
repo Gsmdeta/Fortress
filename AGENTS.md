@@ -8,6 +8,7 @@
 - **Database:** file-backed JSON in `Context.filesDir`
 - **Auth:** local PIN gate; privileged actions require explicit user action and root/Android consent
 - **Build:** Gradle 8.10.2, AGP 8.7.3, Kotlin 2.0.21, JDK 17
+- **Current release:** versionName 1.6.0 / versionCode 16
 - **Live source root:** repository root
 
 ## Source layout
@@ -31,6 +32,7 @@ Fortress is defensive tooling for devices the operator owns. Root actions may in
 3. Update `tasks/Task_state.js` and append `tasks/Debug_Log.md` for each fixed bug.
 4. Prefer small, reviewable changes. Do not commit or push without explicit user approval.
 5. Run `python3 tools/qa_smoke.py`, `git diff --check`, and JSON validation locally. Run Gradle tests/lint/build in GitHub Actions when the sandbox lacks the Android toolchain.
+6. For a release candidate, verify both `android` and `Build FORTRESS APK` workflows on the exact merge commit and record the artifact SHA-256 in `tasks/Debug_Log.md`.
 
 ## Kotlin / Android rules
 
@@ -42,6 +44,8 @@ Fortress is defensive tooling for devices the operator owns. Root actions may in
 - Root shell commands must be bounded, newline/NUL guarded, sentinel-safe, and limited to defensive operations.
 - Compose controls need stable text labels/content descriptions and layouts that fit 320dp-wide phones.
 - Keep the CVE catalog honest: `softwarePatchAvailable=true` only when a concrete local mitigation exists.
+- Every software mitigation that changes device state must record an undo command before reporting success; UI must expose rollback when a ledger entry exists.
+- VirusTotal remains optional and hash-first; never upload an artifact automatically. Realtime file observation is advisory until the bounded artifact scanner analyzes the file.
 
 ## Delivery
 
