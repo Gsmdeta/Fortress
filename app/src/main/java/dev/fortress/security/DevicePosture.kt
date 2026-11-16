@@ -149,8 +149,8 @@ object DevicePosture {
             },
         )
 
-        val deductions = checks.sumOf {
-            when (it.state) {
+        val deductions = checks.fold(0) { total, check ->
+            total + when (check.state) {
                 PostureCheck.State.OK -> 0
                 PostureCheck.State.INFO -> 2
                 PostureCheck.State.WARN -> 10
