@@ -10,7 +10,6 @@ import dev.fortress.root.RootShell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -169,6 +168,6 @@ object DevicePosture {
 
     private fun securityPatchAgeDays(value: String?): Long? = runCatching {
         val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(value ?: return null) ?: return null
-        TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - date.time).coerceAtLeast(0)
+        TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis() - date.time).coerceAtLeast(0L)
     }.getOrNull()
 }
