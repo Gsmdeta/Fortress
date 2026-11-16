@@ -131,9 +131,10 @@ fun NetworkTab() {
                     if (tapRunning) ChipKind.OK else ChipKind.NEUTRAL,
                 )
                 MonoText(
-                    if (tapRunning) "traffic is being classified through the TUN" else "start to request VPN consent",
+                    if (tapRunning) "capture mode is active — routed connectivity pauses while packets are inspected"
+                    else "start to request VPN consent",
                     size = 11.sp,
-                    color = ConsoleColors.TextMuted,
+                    color = if (tapRunning) ConsoleColors.Amber else ConsoleColors.TextMuted,
                 )
             }
             Spacer(Modifier.height(10.dp))

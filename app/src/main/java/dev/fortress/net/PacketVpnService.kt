@@ -16,6 +16,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import java.io.FileInputStream
 
 /**
@@ -46,6 +47,7 @@ class PacketVpnService : VpnService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var tun: ParcelFileDescriptor? = null
     private lateinit var monitor: TrafficMonitor
+    private var tapJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -68,7 +70,8 @@ class PacketVpnService : VpnService() {
             NOTIF_ID,
             buildNotification(getString(R.string.vpn_notif_title), getString(R.string.vpn_notif_text))
         )
-        scope.launch { runTap() }
+        tapJob?.cancel()
+        tapJob = scope.launch { runTap() }
         return START_STICKY
     }
 
@@ -95,15 +98,23 @@ class PacketVpnService : VpnService() {
         tun = fd
         isRunning = true
 
-        val input = FileInputStream(fd.fileDescriptor)
-        val buffer = ByteArray(MTU)
-        while (scope.isActive && isRunning) {
-            val len = try {
-                input.read(buffer) // blocking read on the TUN char device
-            } catch (e: Exception) {
-                break
+        try {
+            FileInputStream(fd.fileDescriptor).use { input ->
+                val buffer = ByteArray(MTU)
+                while (scope.isActive && isRunning) {
+                    val len = try {
+                        input.read(buffer) // blocking read on the TUN char device
+                    } catch (e: Exception) {
+                        break
+                    }
+                    if (len > 0) monitor.inspect(buffer, len)
+                }
             }
-            if (len > 0) monitor.inspect(buffer, len)
+        } finally {
+            isRunning = false
+            runCatching { fd.close() }
+            if (tun === fd) tun = null
+            stopSelf()
         }
     }
 
@@ -123,6 +134,8 @@ class PacketVpnService : VpnService() {
             .build()
 
     private fun stopTap() {
+        tapJob?.cancel()
+        tapJob = null
         isRunning = false
         runCatching { tun?.close() }
         tun = null
@@ -136,6 +149,7 @@ class PacketVpnService : VpnService() {
         runCatching { tun?.close() }
         tun = null
         scope.cancel()
+        tapJob = null
         super.onDestroy()
     }
 

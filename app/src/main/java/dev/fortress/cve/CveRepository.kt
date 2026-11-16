@@ -89,6 +89,11 @@ class CveRepository(private val context: Context) {
     data class PatchResult(val success: Boolean, val message: String)
 
     suspend fun applySoftwarePatch(entry: CveEntry, onLine: (String) -> Unit): PatchResult {
+        if (!RootShell.isAvailable()) {
+            val message = "${entry.id}: root access is required for local mitigation"
+            onLine("!! $message")
+            return PatchResult(false, message)
+        }
         val cmds = mitigationFor(entry.id)
         if (cmds.isEmpty()) {
             return PatchResult(

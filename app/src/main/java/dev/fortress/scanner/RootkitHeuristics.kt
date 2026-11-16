@@ -12,9 +12,17 @@ package dev.fortress.scanner
  */
 object RootkitHeuristics {
 
-    init {
-        // libfortress-native.so from app/src/main/cpp (CMake externalNativeBuild).
-        System.loadLibrary("fortress-native")
+    /**
+     * The release APK intentionally ships only ARM ABIs. A user can still
+     * install it on an x86 emulator or an OEM image that refuses to load the
+     * native library, so JNI loading must be optional rather than an object
+     * initialisation crash that takes down the entire console.
+     */
+    private val nativeLoaded: Boolean by lazy {
+        runCatching {
+            System.loadLibrary("fortress-native")
+            true
+        }.getOrDefault(false)
     }
 
     /** Multi-line report; each line is prefixed '!' suspicious / '-' degraded / '+' ok. */
@@ -28,11 +36,23 @@ object RootkitHeuristics {
 
     // -- safe wrappers used by DeepScanner ------------------------------------
 
-    fun safeScanSyscallTable(): String? = runCatching { scanSyscallTable() }.getOrNull()
+    fun safeScanSyscallTable(): String? = if (nativeLoaded) {
+        runCatching { scanSyscallTable() }.getOrNull()
+    } else {
+        "-native heuristics unavailable for this ABI\n"
+    }
 
-    fun safeCheckInlineHooks(): Int? = runCatching { checkInlineHooks() }.getOrNull()
+    fun safeCheckInlineHooks(): Int? = if (nativeLoaded) {
+        runCatching { checkInlineHooks() }.getOrNull()
+    } else {
+        null
+    }
 
-    fun safeDetectHiddenThreads(): Int? = runCatching { detectHiddenThreads() }.getOrNull()
+    fun safeDetectHiddenThreads(): Int? = if (nativeLoaded) {
+        runCatching { detectHiddenThreads() }.getOrNull()
+    } else {
+        null
+    }
 
     // -- pure Kotlin checks (no native code) ----------------------------------
 

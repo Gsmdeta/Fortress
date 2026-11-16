@@ -66,11 +66,13 @@ std::vector<Sym> parseKallsyms(const std::string &text) {
 extern "C" {
 
 // ---------------------------------------------------------------------------
-// scanSyscallTable: sanity-check the syscall table against kernel text bounds.
+// scanSyscallTable: sanity-check the syscall table against kernel data bounds.
 //
 // Strategy (detection only):
-//  1. Parse /proc/kallsyms to locate `sys_call_table` plus the _stext/_etext
-//     kernel text range markers.
+//  1. Parse /proc/kallsyms to locate `sys_call_table` plus the _sdata/_edata
+//     kernel data range markers. The syscall table is a data structure, so
+//     comparing it to _stext/_etext would create a false critical finding on
+//     ordinary kernels.
 //  2. Cross-reference /proc/self/maps strings for anonymous r-x mappings
 //     (rootkit trampolines often map RWX pages outside any file backing).
 //  3. Report counts; the Kotlin layer renders the verdict. We never write.
@@ -89,18 +91,24 @@ Java_dev_fortress_scanner_RootkitHeuristics_scanSyscallTable(JNIEnv *env, jobjec
         report += "-kallsyms unreadable (no root or kptr_restrict=2)\n";
     } else {
         std::vector<Sym> syms = parseKallsyms(ksym);
-        unsigned long long stext = 0, etext = 0, sct = 0;
+        unsigned long long sdata = 0, edata = 0, srodata = 0, erodata = 0, sct = 0;
         for (const Sym &s : syms) {
-            if (s.name == "_stext") stext = s.addr;
-            else if (s.name == "_etext") etext = s.addr;
+            if (s.name == "_sdata") sdata = s.addr;
+            else if (s.name == "_edata") edata = s.addr;
+            else if (s.name == "__start_rodata" || s.name == "_srodata") srodata = s.addr;
+            else if (s.name == "__end_rodata" || s.name == "_erodata") erodata = s.addr;
             else if (s.name == "sys_call_table") sct = s.addr;
         }
-        if (sct == 0 || stext == 0 || etext == 0) {
-            report += "-sys_call_table/_stext/_etext not resolved\n";
-        } else if (sct < stext || sct > etext) {
-            report += "!sys_call_table outside kernel text range (patched map?)\n";
+        const bool inData = sdata != 0 && edata > sdata && sct >= sdata && sct <= edata;
+        const bool inRodata = srodata != 0 && erodata > srodata && sct >= srodata && sct <= erodata;
+        const bool boundsAvailable = (sdata != 0 && edata > sdata) ||
+                                     (srodata != 0 && erodata > srodata);
+        if (sct == 0 || !boundsAvailable) {
+            report += "-sys_call_table or kernel data bounds not resolved\n";
+        } else if (!inData && !inRodata) {
+            report += "!sys_call_table outside kernel data range (patched map?)\n";
         } else {
-            report += "+sys_call_table inside kernel text range\n";
+            report += "+sys_call_table inside kernel data/rodata range\n";
         }
     }
 

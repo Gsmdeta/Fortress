@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -125,49 +126,101 @@ fun DashboardTab() {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 ScoreRing(score = score, scanning = scanning)
                 Spacer(Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusChip(
-                        "verdict: ${verdict ?: "—"}",
-                        when {
-                            scanning -> ChipKind.WARN
-                            verdict == "CLEAN" -> ChipKind.OK
-                            verdict == "SUSPICIOUS" -> ChipKind.WARN
-                            verdict == null -> ChipKind.NEUTRAL
-                            else -> ChipKind.CRIT
-                        },
-                    )
-                    StatusChip(
-                        if (guardRunning) "guard armed" else "guard off",
-                        if (guardRunning) ChipKind.OK else ChipKind.NEUTRAL,
-                    )
-                    StatusChip(
-                        if (tapRunning) "tap up" else "tap down",
-                        if (tapRunning) ChipKind.OK else ChipKind.NEUTRAL,
-                    )
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    if (maxWidth < 420.dp) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            StatusChip(
+                                "verdict: ${verdict ?: "—"}",
+                                when {
+                                    scanning -> ChipKind.WARN
+                                    verdict == "CLEAN" -> ChipKind.OK
+                                    verdict == "SUSPICIOUS" -> ChipKind.WARN
+                                    verdict == null -> ChipKind.NEUTRAL
+                                    else -> ChipKind.CRIT
+                                },
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                StatusChip(
+                                    if (guardRunning) "guard armed" else "guard off",
+                                    if (guardRunning) ChipKind.OK else ChipKind.NEUTRAL,
+                                )
+                                StatusChip(
+                                    if (tapRunning) "tap up" else "tap down",
+                                    if (tapRunning) ChipKind.OK else ChipKind.NEUTRAL,
+                                )
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            StatusChip(
+                                "verdict: ${verdict ?: "—"}",
+                                when {
+                                    scanning -> ChipKind.WARN
+                                    verdict == "CLEAN" -> ChipKind.OK
+                                    verdict == "SUSPICIOUS" -> ChipKind.WARN
+                                    verdict == null -> ChipKind.NEUTRAL
+                                    else -> ChipKind.CRIT
+                                },
+                            )
+                            StatusChip(
+                                if (guardRunning) "guard armed" else "guard off",
+                                if (guardRunning) ChipKind.OK else ChipKind.NEUTRAL,
+                            )
+                            StatusChip(
+                                if (tapRunning) "tap up" else "tap down",
+                                if (tapRunning) ChipKind.OK else ChipKind.NEUTRAL,
+                            )
+                        }
+                    }
                 }
             }
         }
 
         // -- quick actions ------------------------------------------------------
         ConsolePanel(label = "QUICK ACTIONS") {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                ConsoleButton(
-                    if (scanning) "SCANNING…" else "START SCAN",
-                    enabled = !scanning,
-                    modifier = Modifier.weight(1f),
-                ) { ScanCenter.start() }
-                ConsoleButton(
-                    if (guardRunning) "STOP GUARD" else "ARM GUARD",
-                    primary = false,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    if (guardRunning) RealtimeGuard.stop(context) else RealtimeGuard.start(context)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                if (maxWidth < 480.dp) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ConsoleButton(
+                            if (scanning) "SCANNING…" else "START SCAN",
+                            enabled = !scanning,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { ScanCenter.start() }
+                        ConsoleButton(
+                            if (guardRunning) "STOP GUARD" else "ARM GUARD",
+                            primary = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            if (guardRunning) RealtimeGuard.stop(context) else RealtimeGuard.start(context)
+                        }
+                        ConsoleButton(
+                            if (tapRunning) "STOP TAP" else "START TAP",
+                            primary = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { requestTap() }
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ConsoleButton(
+                            if (scanning) "SCANNING…" else "START SCAN",
+                            enabled = !scanning,
+                            modifier = Modifier.weight(1f),
+                        ) { ScanCenter.start() }
+                        ConsoleButton(
+                            if (guardRunning) "STOP GUARD" else "ARM GUARD",
+                            primary = false,
+                            modifier = Modifier.weight(1f),
+                        ) {
+                            if (guardRunning) RealtimeGuard.stop(context) else RealtimeGuard.start(context)
+                        }
+                        ConsoleButton(
+                            if (tapRunning) "STOP TAP" else "START TAP",
+                            primary = false,
+                            modifier = Modifier.weight(1f),
+                        ) { requestTap() }
+                    }
                 }
-                ConsoleButton(
-                    if (tapRunning) "STOP TAP" else "START TAP",
-                    primary = false,
-                    modifier = Modifier.weight(1f),
-                ) { requestTap() }
             }
         }
 
