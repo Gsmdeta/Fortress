@@ -175,11 +175,20 @@ fun ShieldTab() {
                             Column(Modifier.weight(1f)) {
                                 MonoText(t.label, size = 12.sp)
                                 MonoText(
-                                    "${t.state} · pid ${t.pid}",
+                                    "${t.state} · pid ${t.pid} · ${t.cpu}% CPU · ${t.memMb} MB",
                                     size = 9.sp,
                                     color = ConsoleColors.TextFaint,
                                 )
+                                MonoText(t.riskReason, size = 9.sp, color = ConsoleColors.TextFaint)
                             }
+                            StatusChip(
+                                t.risk,
+                                when (t.risk) {
+                                    "HIGH" -> ChipKind.CRIT
+                                    "MEDIUM" -> ChipKind.WARN
+                                    else -> ChipKind.OK
+                                },
+                            )
                             ConsoleButton(
                                 "KILL",
                                 primary = false,

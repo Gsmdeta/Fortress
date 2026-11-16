@@ -2,6 +2,7 @@ package dev.fortress.scanner
 
 import android.content.Context
 import dev.fortress.root.RootShell
+import dev.fortress.vt.VirusTotalClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -23,6 +24,7 @@ class ArtifactScanner(private val context: Context) {
     private val suspiciousMarkers = listOf(
         "frida-gadget", "meterpreter", "metasploit", "reverse_tcp", "credential-dump",
     )
+    private val virusTotal = VirusTotalClient(context)
 
     suspend fun scan(rooted: Boolean, onDetail: suspend (String) -> Unit): Result = withContext(Dispatchers.IO) {
         val candidates = if (rooted) rootCandidates() else localCandidates()
@@ -37,14 +39,18 @@ class ArtifactScanner(private val context: Context) {
             val nameHit = suspiciousNames.any { lower.contains(it) }
             val digest = if (rooted) rootSha256(path) else sha256(file)
             val markerHit = if (rooted) rootMarkerHit(path) else localMarkerHit(file)
+            val vt = if ((nameHit || markerHit) && digest != null && virusTotal.hasKey()) {
+                virusTotal.lookupByHash(digest)
+            } else null
             scanned++
             bytes += length
             if (scanned % 25 == 0) onDetail("artifact sweep: $scanned files · ${bytes / (1024 * 1024)} MiB")
             if (nameHit || markerHit) {
+                val vtDetail = vt?.let { " · VT ${it.malicious} malicious/${it.suspicious} suspicious" }.orEmpty()
                 findings += DeepScanner.ScanProgress.Finding(
-                    DeepScanner.Severity.WARN,
+                    if ((vt?.malicious ?: 0) > 0) DeepScanner.Severity.CRITICAL else DeepScanner.Severity.WARN,
                     "suspicious artifact",
-                    "${File(path).name} · ${digest ?: "hash unavailable"} · review before removal",
+                    "${File(path).name} · ${digest ?: "hash unavailable"}$vtDetail · review before removal",
                 )
             }
         }

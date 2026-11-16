@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.TextButton
@@ -28,9 +30,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.FileProvider
 import dev.fortress.ConsoleRuntime
 import dev.fortress.root.MagiskInstaller
+import dev.fortress.vt.VirusTotalClient
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -39,6 +43,7 @@ import java.io.File
 fun SettingsTab() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val virusTotal = remember { VirusTotalClient(context.applicationContext) }
     val prefs = remember { context.getSharedPreferences("fortress_settings", Context.MODE_PRIVATE) }
     var deepArtifactScan by remember { mutableStateOf(prefs.getBoolean("deep_artifact_scan", false)) }
     var autoGuard by remember {
@@ -51,6 +56,8 @@ fun SettingsTab() {
     var exportFile by remember { mutableStateOf<File?>(null) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var showResetPin by remember { mutableStateOf(false) }
+    var vtKey by remember { mutableStateOf("") }
+    var vtSaved by remember { mutableStateOf(virusTotal.hasKey()) }
 
     if (showResetPin) {
         AlertDialog(
@@ -167,6 +174,38 @@ fun SettingsTab() {
             EngineRow("Fortress heuristics", "enabled · process, maps, modules, kernel symbols")
             EngineRow("VirusTotal", "optional · hash-first lookup, explicit upload consent")
             EngineRow("ClamAV / YARA", "not bundled · add a reviewed ruleset/engine before enabling")
+            Spacer(Modifier.height(8.dp))
+            SectionLabel("OPTIONAL VIRUSTOTAL KEY")
+            Spacer(Modifier.height(6.dp))
+            OutlinedTextField(
+                value = vtKey,
+                onValueChange = { vtKey = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                placeholder = { MonoText("paste API key", size = 12.sp, color = ConsoleColors.TextFaint) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ConsoleColors.Emerald,
+                    unfocusedBorderColor = ConsoleColors.PanelBorder,
+                    focusedTextColor = ConsoleColors.TextPrimary,
+                    unfocusedTextColor = ConsoleColors.TextPrimary,
+                    cursorColor = ConsoleColors.Emerald,
+                ),
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                MonoText(
+                    if (vtSaved) "hash-first lookup configured" else "no API key stored",
+                    size = 11.sp,
+                    color = ConsoleColors.TextMuted,
+                    modifier = Modifier.weight(1f),
+                )
+                ConsoleButton("SAVE", primary = false, enabled = vtKey.isNotBlank()) {
+                    virusTotal.setApiKey(vtKey)
+                    vtKey = ""
+                    vtSaved = true
+                }
+            }
         }
 
         ConsolePanel(label = "MEMORY FORENSICS") {

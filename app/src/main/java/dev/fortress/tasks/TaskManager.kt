@@ -34,6 +34,8 @@ class TaskManager(private val context: Context) {
         val memMb: Int,
         val battery: Double,      // drain %/h ESTIMATE (documented heuristic)
         val state: String,        // foreground | background | cached
+        val risk: String = "LOW",
+        val riskReason: String = "",
     )
 
     fun snapshot(): List<TaskItem> = buildList {
@@ -56,6 +58,8 @@ class TaskManager(private val context: Context) {
                     cpu = 0.0, memMb = 0, // filled by source 3 when rooted
                     battery = drainEstimate(state),
                     state = state,
+                    risk = riskFor(pkg),
+                    riskReason = riskReasonFor(pkg),
                 )
             )
         }
@@ -127,5 +131,17 @@ class TaskManager(private val context: Context) {
         pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
     } catch (e: Exception) {
         pkg
+    }
+
+    private fun riskFor(pkg: String): String = when {
+        listOf("frida", "meterpreter", "metasploit", "spyware", "rat").any { pkg.contains(it, true) } -> "HIGH"
+        listOf("xposed", "riru", "shamiko", "magiskhide").any { pkg.contains(it, true) } -> "MEDIUM"
+        else -> "LOW"
+    }
+
+    private fun riskReasonFor(pkg: String): String = when (riskFor(pkg)) {
+        "HIGH" -> "package name matches high-risk malware tooling"
+        "MEDIUM" -> "root/injection component observed"
+        else -> "no built-in high-signal indicator"
     }
 }
