@@ -62,7 +62,7 @@ class ArtifactScanner(private val context: Context) {
         }
     }.distinct()
 
-    private fun rootCandidates(): List<String> = RootShell.exec(
+    private suspend fun rootCandidates(): List<String> = RootShell.exec(
         "find /storage/emulated/0 /data/local/tmp /data/adb/modules /system/app /system/priv-app -type f -size -20M 2>/dev/null | head -300"
     ).output.filter { it.isNotBlank() }.distinct()
 
