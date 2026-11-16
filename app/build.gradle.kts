@@ -97,4 +97,6 @@ dependencies {
 
     // EncryptedSharedPreferences keeps the VT API key out of plaintext prefs.
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Tink references these annotations during release R8 shrinking.
+    implementation("com.google.errorprone:error_prone_annotations:2.30.0")
 }

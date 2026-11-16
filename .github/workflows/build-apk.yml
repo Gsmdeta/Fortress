@@ -34,9 +34,8 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:test :app:lintDebug :app:assembleDebug --no-daemon
 
-      - name: Build release APK (unsigned if no keystore secrets)
+      - name: Build release APK
         run: ./gradlew :app:assembleRelease --no-daemon
-        continue-on-error: true
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4
@@ -51,4 +50,4 @@ jobs:
           name: fortress-rootshield-release-apk
           path: |
             app/build/outputs/apk/release/*.apk
-          if-no-files-found: ignore
+          if-no-files-found: error
