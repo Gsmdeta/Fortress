@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +52,13 @@ import dev.fortress.data.SessionStore
 import dev.fortress.guard.RealtimeGuard
 import dev.fortress.net.PacketVpnService
 import dev.fortress.scanner.DeepScanner
+import dev.fortress.security.DevicePosture
+import dev.fortress.security.DevicePostureSnapshot
+import dev.fortress.security.PostureCheck
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
@@ -70,6 +78,9 @@ fun DashboardTab() {
 
     var sessions by remember { mutableStateOf(store.sessions()) }
     var posture by remember { mutableStateOf(store.posture()) }
+    var devicePosture by remember { mutableStateOf<DevicePostureSnapshot?>(null) }
+    var postureLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     var guardRunning by remember { mutableStateOf(RealtimeGuard.isRunning) }
     var tapRunning by remember { mutableStateOf(PacketVpnService.isRunning) }
 
@@ -88,6 +99,13 @@ fun DashboardTab() {
             posture = store.posture()
         }
     }
+
+    suspend fun refreshDevicePosture() {
+        postureLoading = true
+        devicePosture = withContext(Dispatchers.IO) { DevicePosture.collect(context) }
+        postureLoading = false
+    }
+    LaunchedEffect(Unit) { refreshDevicePosture() }
 
     val last = sessions.firstOrNull()
     val score = when (val p = progress) {
@@ -177,6 +195,44 @@ fun DashboardTab() {
             }
         }
 
+        // -- real device posture ---------------------------------------------
+        ConsolePanel(label = "DEVICE POSTURE · LIVE INTEGRITY") {
+            val snapshot = devicePosture
+            if (snapshot == null || postureLoading) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    StatusChip("reading", ChipKind.WARN)
+                    Spacer(Modifier.width(8.dp))
+                    MonoText("collecting Android and root posture…", size = 11.sp, color = ConsoleColors.TextMuted)
+                }
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        MonoText("integrity score ${snapshot.score}/100", size = 15.sp)
+                        MonoText(
+                            "${snapshot.checks.count { it.state == PostureCheck.State.OK }} checks passing · ${snapshot.checks.size} signals",
+                            size = 11.sp,
+                            color = ConsoleColors.TextMuted,
+                        )
+                    }
+                    ConsoleButton("REFRESH", primary = false, enabled = !postureLoading) {
+                        // Launching from the composable callback keeps the UI responsive.
+                        postureLoading = true
+                        scope.launch { refreshDevicePosture() }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    snapshot.checks.take(6).forEach { check ->
+                        PostureCheckRow(check)
+                    }
+                }
+                if (snapshot.checks.size > 6) {
+                    Spacer(Modifier.height(6.dp))
+                    MonoText("+${snapshot.checks.size - 6} more integrity signals in the full report", size = 10.sp, color = ConsoleColors.TextFaint)
+                }
+            }
+        }
+
         // -- quick actions ------------------------------------------------------
         ConsolePanel(label = "QUICK ACTIONS") {
             BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -261,6 +317,28 @@ fun DashboardTab() {
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun PostureCheckRow(check: PostureCheck) {
+    val kind = when (check.state) {
+        PostureCheck.State.OK -> ChipKind.OK
+        PostureCheck.State.WARN -> ChipKind.WARN
+        PostureCheck.State.CRITICAL -> ChipKind.CRIT
+        PostureCheck.State.INFO -> ChipKind.NEUTRAL
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        StatusChip(check.state.name, kind)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f)) {
+            MonoText(check.title, size = 11.sp)
+            MonoText(check.detail, size = 9.sp, color = ConsoleColors.TextFaint)
+        }
+        MonoText(check.value, size = 10.sp, color = ConsoleColors.TextMuted)
     }
 }
 

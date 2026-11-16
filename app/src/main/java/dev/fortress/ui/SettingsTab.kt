@@ -46,6 +46,8 @@ fun SettingsTab() {
     val virusTotal = remember { VirusTotalClient(context.applicationContext) }
     val prefs = remember { context.getSharedPreferences("fortress_settings", Context.MODE_PRIVATE) }
     var deepArtifactScan by remember { mutableStateOf(prefs.getBoolean("deep_artifact_scan", false)) }
+    var artifactLimit by remember { mutableStateOf(prefs.getInt("artifact_limit", 300)) }
+    var includeSystemPaths by remember { mutableStateOf(prefs.getBoolean("include_system_paths", true)) }
     var autoGuard by remember {
         mutableStateOf(
             context.getSharedPreferences("fortress_guard", Context.MODE_PRIVATE)
@@ -107,13 +109,47 @@ fun SettingsTab() {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f)) {
                     MonoText("bounded deep artifact sweep", size = 13.sp)
-                    MonoText("hashes up to 300 candidate files and checks high-risk signatures", size = 11.sp, color = ConsoleColors.TextMuted)
+                    MonoText("hashes user files and selected root paths with a configurable safety limit", size = 11.sp, color = ConsoleColors.TextMuted)
                 }
                 Switch(
                     checked = deepArtifactScan,
                     onCheckedChange = {
                         deepArtifactScan = it
                         prefs.edit().putBoolean("deep_artifact_scan", it).apply()
+                    },
+                    colors = SwitchDefaults.colors(
+                        checkedTrackColor = ConsoleColors.Emerald,
+                        uncheckedTrackColor = ConsoleColors.PanelBorder,
+                    ),
+                )
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
+                    MonoText("artifact sample limit", size = 13.sp)
+                    MonoText("higher limits take longer and use more battery", size = 11.sp, color = ConsoleColors.TextMuted)
+                }
+                ConsoleButton("$artifactLimit", primary = false) {
+                    val next = when (artifactLimit) {
+                        300 -> 1000
+                        1000 -> 5000
+                        else -> 300
+                    }
+                    artifactLimit = next
+                    prefs.edit().putInt("artifact_limit", next).apply()
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.weight(1f)) {
+                    MonoText("include system and root module paths", size = 13.sp)
+                    MonoText("requires root; user storage remains included", size = 11.sp, color = ConsoleColors.TextMuted)
+                }
+                Switch(
+                    checked = includeSystemPaths,
+                    onCheckedChange = {
+                        includeSystemPaths = it
+                        prefs.edit().putBoolean("include_system_paths", it).apply()
                     },
                     colors = SwitchDefaults.colors(
                         checkedTrackColor = ConsoleColors.Emerald,
