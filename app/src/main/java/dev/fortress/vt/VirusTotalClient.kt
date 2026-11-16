@@ -155,7 +155,7 @@ class VirusTotalClient(context: Context) {
             malicious = stats.optInt("malicious", 0),
             suspicious = stats.optInt("suspicious", 0),
             undetected = stats.optInt("undetected", 0),
-            permalink = attrs.optString("permalink", null),
+            permalink = attrs.optString("permalink").takeIf { it.isNotBlank() },
             pending = pending,
         )
     } catch (e: Exception) {

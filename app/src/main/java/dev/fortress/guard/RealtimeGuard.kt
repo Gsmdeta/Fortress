@@ -98,6 +98,7 @@ class RealtimeGuard : android.app.Service() {
 
     // -- watcher 1: Magisk module directory -----------------------------------
 
+    @Suppress("DEPRECATION")
     private fun startModuleObserver() {
         val modulesDir = File("/data/adb/modules")
         if (!modulesDir.exists()) return // non-rooted device — nothing to watch
