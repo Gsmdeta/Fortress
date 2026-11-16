@@ -37,6 +37,7 @@ import dev.fortress.ui.PinLockScreen
 import dev.fortress.ui.ScannerTab
 import dev.fortress.ui.ShieldTab
 import dev.fortress.ui.ScanCenter
+import dev.fortress.ui.SettingsTab
 
 /**
  * Main console — now the Compose port of the web command center.
@@ -58,8 +59,12 @@ class ConsoleActivity : AppCompatActivity() {
 
         val rooted = intent.getBooleanExtra(MainActivity.EXTRA_ROOTED, false)
         val magisk = intent.getBooleanExtra(MainActivity.EXTRA_MAGISK, false)
+        val provider = intent.getStringExtra(MainActivity.EXTRA_ROOT_PROVIDER)
+            ?.let { runCatching { ConsoleRuntime.RootProvider.valueOf(it) }.getOrNull() }
+            ?: if (magisk) ConsoleRuntime.RootProvider.MAGISK else ConsoleRuntime.RootProvider.NONE
         ConsoleRuntime.rooted = rooted
         ConsoleRuntime.magisk = magisk
+        ConsoleRuntime.rootProvider = provider
 
         setContent {
             FortressConsoleTheme {
@@ -96,6 +101,7 @@ class ConsoleActivity : AppCompatActivity() {
 
 private val TABS = listOf("DASH", "SCAN", "NET", "SHIELD", "CVE", "FORENSICS")
 private val TAB_GLYPHS = listOf("⌂", "⌕", "≋", "✦", "!", "≡")
+private const val SETTINGS_TAB = 6
 
 @Composable
 private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: String) {
@@ -124,7 +130,13 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                     androidx.compose.material3.Scaffold(
                         containerColor = ConsoleColors.Bg,
                         topBar = {
-                            ConsoleTopAppBar(TABS[selectedTab], rooted, magisk)
+                            ConsoleTopAppBar(
+                                title = if (selectedTab == SETTINGS_TAB) "SETTINGS" else TABS[selectedTab],
+                                rooted = rooted,
+                                magisk = magisk,
+                                settingsOpen = selectedTab == SETTINGS_TAB,
+                                onSettings = { selectedTab = if (selectedTab == SETTINGS_TAB) 0 else SETTINGS_TAB },
+                            )
                         },
                     ) { contentPadding ->
                         Row(
@@ -145,13 +157,19 @@ private fun FortressConsoleApp(rooted: Boolean, magisk: Boolean, versionName: St
                     androidx.compose.material3.Scaffold(
                         containerColor = ConsoleColors.Bg,
                         topBar = {
-                            ConsoleTopAppBar(TABS[selectedTab], rooted, magisk)
+                            ConsoleTopAppBar(
+                                title = if (selectedTab == SETTINGS_TAB) "SETTINGS" else TABS[selectedTab],
+                                rooted = rooted,
+                                magisk = magisk,
+                                settingsOpen = selectedTab == SETTINGS_TAB,
+                                onSettings = { selectedTab = if (selectedTab == SETTINGS_TAB) 0 else SETTINGS_TAB },
+                            )
                         },
                         bottomBar = {
                             ConsoleNavigationBar(
                                 labels = TABS,
                                 glyphs = TAB_GLYPHS,
-                                selected = selectedTab,
+                                selected = if (selectedTab < TABS.size) selectedTab else -1,
                                 onSelect = { selectedTab = it },
                             )
                         },
@@ -176,6 +194,7 @@ private fun TabContent(selectedTab: Int) {
         2 -> NetworkTab()
         3 -> ShieldTab()
         4 -> CveTab()
+        SETTINGS_TAB -> SettingsTab()
         else -> ForensicsTab()
     }
 }

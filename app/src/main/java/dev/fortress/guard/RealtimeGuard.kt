@@ -39,6 +39,7 @@ data class GuardEvent(
         const val TYPE_PACKAGE_ADDED = "PACKAGE_ADDED"
         const val TYPE_PACKAGE_REPLACED = "PACKAGE_REPLACED"
         const val TYPE_PACKAGE_REMOVED = "PACKAGE_REMOVED"
+        const val TYPE_PACKAGE_RISK = "PACKAGE_RISK"
         const val TYPE_CLIPBOARD = "CLIPBOARD"
     }
 }
@@ -171,6 +172,9 @@ class RealtimeGuard : android.app.Service() {
                     else -> GuardEvent.TYPE_PACKAGE_REMOVED
                 }
                 GuardCenter.emit(GuardEvent(type, pkg))
+                if (type == GuardEvent.TYPE_PACKAGE_ADDED || type == GuardEvent.TYPE_PACKAGE_REPLACED) {
+                    analyzePackageRisk(pkg)
+                }
             }
         }.also { receiver ->
             if (Build.VERSION.SDK_INT >= 33) {
@@ -179,6 +183,30 @@ class RealtimeGuard : android.app.Service() {
                 @Suppress("UnspecifiedRegisterReceiverFlag")
                 registerReceiver(receiver, filter)
             }
+        }
+    }
+
+    private fun analyzePackageRisk(pkg: String) {
+        val risky = runCatching {
+            packageManager.getPackageInfo(pkg, android.content.pm.PackageManager.GET_PERMISSIONS)
+                .requestedPermissions.orEmpty()
+                .filter { permission ->
+                    permission in setOf(
+                        "android.permission.READ_SMS",
+                        "android.permission.RECEIVE_SMS",
+                        "android.permission.SYSTEM_ALERT_WINDOW",
+                        "android.permission.REQUEST_INSTALL_PACKAGES",
+                        "android.permission.QUERY_ALL_PACKAGES",
+                    )
+                }
+        }.getOrDefault(emptyList())
+        if (risky.isNotEmpty()) {
+            GuardCenter.emit(
+                GuardEvent(
+                    GuardEvent.TYPE_PACKAGE_RISK,
+                    "$pkg · ${risky.joinToString { it.substringAfterLast('.') }}",
+                )
+            )
         }
     }
 

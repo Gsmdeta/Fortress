@@ -12,12 +12,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dev.fortress.ui.dpPx
+import dev.fortress.ConsoleRuntime.RootProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
-import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 
@@ -77,10 +77,11 @@ class MainActivity : AppCompatActivity() {
     private fun startTriage() {
         lifecycleScope.launch(Dispatchers.IO) {
             val rooted = checkRoot()
-            val magisk = detectMagisk()
+            val rootProvider = detectRootProvider(rooted)
+            val magisk = rootProvider == RootProvider.MAGISK
             val summary = buildString {
                 append("su: ").append(if (rooted) "AVAILABLE" else "absent").append('\n')
-                append("magisk: ").append(if (magisk) "detected" else "not detected").append('\n')
+                append("root manager: ").append(rootProvider.name).append('\n')
                 append(if (rooted) "opening console (deep mode)…" else "opening console (limited mode)…")
             }
             withContext(Dispatchers.Main) { status.text = summary }
@@ -92,6 +93,7 @@ class MainActivity : AppCompatActivity() {
                     Bundle().apply {
                         putBoolean(EXTRA_ROOTED, rooted)
                         putBoolean(EXTRA_MAGISK, magisk)
+                        putString(EXTRA_ROOT_PROVIDER, rootProvider.name)
                     }
                 )
             )
@@ -125,33 +127,44 @@ class MainActivity : AppCompatActivity() {
      *     is wrapped in try/catch because SecurityException/IOException on
      *     non-rooted builds is the COMMON case, not an error.
      */
-    private fun detectMagisk(): Boolean {
-        var found = false
-        try {
-            val proc = Runtime.getRuntime().exec("pm list packages")
-            BufferedReader(InputStreamReader(proc.inputStream)).forEachLine { line ->
-                if (line.contains("com.topjohnwu.magisk") || line.contains("io.github.huskydg.magisk")) {
-                    found = true
-                }
+    private fun detectRootProvider(rooted: Boolean): RootProvider {
+        if (!rooted) return RootProvider.NONE
+        val packages = buildString {
+            runCatching {
+                Runtime.getRuntime().exec("pm list packages").inputStream.bufferedReader().use { append(it.readText()) }
             }
-            proc.waitFor()
-        } catch (e: Exception) {
-            // PackageManager inaccessible — fall through to the FS probe.
+        }.lowercase()
+        return when {
+            packages.contains("com.topjohnwu.magisk") ||
+                packages.contains("io.github.huskydg.magisk") ||
+                rootPathExists("/data/adb/magisk") -> RootProvider.MAGISK
+            packages.contains("me.weishu.kernelsu") ||
+                packages.contains("com.rifsxd.ksunext") ||
+                rootPathExists("/data/adb/ksu") ||
+                rootPathExists("/data/adb/ksud") -> RootProvider.KERNELSU
+            packages.contains("me.bmax.apatch") ||
+                packages.contains("me.bmax.apatch.ui") ||
+                rootPathExists("/data/adb/ap") ||
+                rootPathExists("/data/adb/apatch") -> RootProvider.APATCH
+            else -> RootProvider.UNKNOWN
         }
-        if (!found) {
-            try {
-                found = File("/data/adb/magisk").exists()
-            } catch (e: SecurityException) {
-                // Non-rooted device: /data/adb is not readable. Expected.
-            } catch (e: Exception) {
-                // Any other I/O failure is treated as "not detected".
-            }
+    }
+
+    private fun rootPathExists(path: String): Boolean = try {
+        val proc = Runtime.getRuntime().exec(arrayOf("su", "-c", "test -e $path"))
+        if (!proc.waitFor(2, TimeUnit.SECONDS)) {
+            proc.destroyForcibly()
+            false
+        } else {
+            proc.exitValue() == 0
         }
-        return found
+    } catch (_: Exception) {
+        false
     }
 
     companion object {
         const val EXTRA_ROOTED = "rooted"
         const val EXTRA_MAGISK = "magisk"
+        const val EXTRA_ROOT_PROVIDER = "root_provider"
     }
 }

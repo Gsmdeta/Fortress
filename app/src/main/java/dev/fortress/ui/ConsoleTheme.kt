@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -239,6 +240,8 @@ fun ConsoleTopAppBar(
     title: String,
     rooted: Boolean,
     magisk: Boolean,
+    settingsOpen: Boolean = false,
+    onSettings: (() -> Unit)? = null,
 ) {
     TopAppBar(
         title = {
@@ -261,6 +264,21 @@ fun ConsoleTopAppBar(
             )
             if (magisk) {
                 StatusChip("MAGISK", ChipKind.OK, modifier = Modifier.padding(end = 12.dp))
+            }
+            onSettings?.let { action ->
+                IconButton(
+                    onClick = action,
+                    modifier = Modifier.semantics {
+                        contentDescription = if (settingsOpen) "Close settings" else "Open settings"
+                    },
+                ) {
+                    Text(
+                        text = if (settingsOpen) "×" else "⚙",
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 22.sp,
+                        color = ConsoleColors.TextPrimary,
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

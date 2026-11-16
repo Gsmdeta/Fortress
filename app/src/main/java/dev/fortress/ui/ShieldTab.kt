@@ -140,6 +140,7 @@ fun ShieldTab() {
                                 e.type,
                                 when {
                                     e.type.startsWith("MODULE") -> ChipKind.WARN
+                                    e.type == GuardEvent.TYPE_PACKAGE_RISK -> ChipKind.WARN
                                     else -> ChipKind.NEUTRAL
                                 },
                             )

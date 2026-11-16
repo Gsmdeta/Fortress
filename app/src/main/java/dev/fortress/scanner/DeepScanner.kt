@@ -9,7 +9,7 @@ import dev.fortress.root.RootShell
 import java.io.File
 
 /**
- * Four-phase suspend scan engine. Emits [ScanProgress] through a StateFlow so
+ * Five-phase suspend scan engine. Emits [ScanProgress] through a StateFlow so
  * ScannerFragment (and any future dashboard widget) can render live progress.
  *
  * ANDROID 10+ /proc NOTE: since Android 10, the kernel's hidepid-style
@@ -52,7 +52,7 @@ class DeepScanner(private val context: Context) {
         _progress.value = p
     }
 
-    /** Runs all four phases sequentially; safe to call from any scope. */
+    /** Runs all five phases sequentially; safe to call from any scope. */
     suspend fun runScan(): ScanProgress.Finished = withContext(Dispatchers.IO) {
         findings.clear()
         val rooted = RootShell.isAvailable()
@@ -62,6 +62,7 @@ class DeepScanner(private val context: Context) {
         phase2MemoryMaps(rooted)
         phase3FileAudit(rooted)
         phase4RootkitHeuristics(rooted)
+        phase5ArtifactSweep(rooted)
 
         val deduction = findings.sumOf { f ->
             when (f.severity) {
@@ -98,7 +99,7 @@ class DeepScanner(private val context: Context) {
     private val rootManagerProcNames = listOf("zygisk", "shamiko", "magiskhide")
 
     private suspend fun phase1Processes(rooted: Boolean) {
-        emit(ScanProgress.Phase(1, 4, "process walk /proc/*/cmdline"))
+        emit(ScanProgress.Phase(1, 5, "process walk /proc/*/cmdline"))
         val pids = if (rooted) {
             RootShell.exec("ls -1 /proc | grep -E '^[0-9]+$' | head -200")
                 .output
@@ -132,7 +133,7 @@ class DeepScanner(private val context: Context) {
     // -- phase 2: memory maps heuristics ------------------------------------
 
     private suspend fun phase2MemoryMaps(rooted: Boolean) {
-        emit(ScanProgress.Phase(2, 4, "memory maps heuristics"))
+        emit(ScanProgress.Phase(2, 5, "memory maps heuristics"))
         // Self maps are always readable; other pids only with root (see class doc).
         val targets = mutableListOf("self")
         if (rooted) {
@@ -165,7 +166,7 @@ class DeepScanner(private val context: Context) {
     // -- phase 3: file audit -------------------------------------------------
 
     private suspend fun phase3FileAudit(rooted: Boolean) {
-        emit(ScanProgress.Phase(3, 4, "file audit /system/priv-app + /data/adb/modules"))
+        emit(ScanProgress.Phase(3, 5, "file audit /system/priv-app + /data/adb/modules"))
         val privDirs = if (rooted) {
             RootShell.exec("find /system/priv-app -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l")
                 .output.lastOrNull()?.trim()?.toIntOrNull() ?: 0
@@ -206,7 +207,7 @@ class DeepScanner(private val context: Context) {
     // -- phase 4: native rootkit heuristics ----------------------------------
 
     private suspend fun phase4RootkitHeuristics(rooted: Boolean) {
-        emit(ScanProgress.Phase(4, 4, "rootkit heuristics (fortress-native)"))
+        emit(ScanProgress.Phase(4, 5, "rootkit heuristics (fortress-native)"))
         val report = RootkitHeuristics.safeScanSyscallTable()
         report?.lineSequence()?.forEach { line ->
             val text = line.drop(1) // strip +/!/- marker
@@ -223,6 +224,22 @@ class DeepScanner(private val context: Context) {
         RootkitHeuristics.safeDetectHiddenThreads()?.let { hidden ->
             if (hidden > 0) addFinding(Severity.WARN, "task/status mismatch", "$hidden process(es) disagree on thread count")
         }
+    }
+
+    // -- phase 5: bounded deep artifact sweep -------------------------------
+
+    private suspend fun phase5ArtifactSweep(rooted: Boolean) {
+        emit(ScanProgress.Phase(5, 5, "deep artifact sweep · hashes + high-signal IOCs"))
+        val enabled = context.getSharedPreferences("fortress_settings", Context.MODE_PRIVATE)
+            .getBoolean("deep_artifact_scan", false)
+        if (!enabled) {
+            emit(ScanProgress.Detail(5, "disabled in Settings — enable bounded deep artifact sweep"))
+            return
+        }
+        val result = ArtifactScanner(context).scan(rooted) { detail ->
+            emit(ScanProgress.Detail(5, detail))
+        }
+        result.findings.forEach { findings.add(it); _progress.value = it }
     }
 
     // -- helpers --------------------------------------------------------------

@@ -94,13 +94,19 @@ fun ScannerTab() {
         }
 
         // -- 4-phase tracker ---------------------------------------------------
-        ConsolePanel(label = "PHASES · process walk → memory maps → file audit → heuristics") {
+        ConsolePanel(label = "PHASES · process → maps → audit → rootkit → artifacts") {
             val currentPhase = when {
-                finished -> 4
+                finished -> 5
                 p is DeepScanner.ScanProgress.Phase -> (p as DeepScanner.ScanProgress.Phase).index
                 else -> 0
             }
-            listOf("process walk /proc", "memory maps rwx", "file audit priv-app + modules", "rootkit heuristics (native)")
+                listOf(
+                    "process walk /proc",
+                    "memory maps rwx",
+                    "file audit priv-app + modules",
+                    "rootkit heuristics (native)",
+                    "deep artifact sweep (optional)",
+                )
                 .forEachIndexed { i, name ->
                     val idx = i + 1
                     val done = idx < currentPhase || finished
@@ -133,7 +139,7 @@ fun ScannerTab() {
             Spacer(Modifier.height(10.dp))
             val fraction = when {
                 finished -> 1f
-                p is DeepScanner.ScanProgress.Phase -> (p as DeepScanner.ScanProgress.Phase).index / 4f
+                p is DeepScanner.ScanProgress.Phase -> (p as DeepScanner.ScanProgress.Phase).index / 5f
                 else -> 0f
             }
             Box(
