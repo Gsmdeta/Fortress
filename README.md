@@ -5,7 +5,7 @@ Fortress web command center (`dev.fortress.console` APK). The tree ships a
 Gradle wrapper (Gradle 8.10.2) and a GitHub Actions workflow, so it builds
 out of the box — locally or on CI — with no Android Studio required.
 
-- **Package:** `dev.fortress.console` · versionCode `14` · versionName `1.4.0`
+- **Package:** `dev.fortress.console` · versionCode `15` · versionName `1.5.0`
 - **SDK targets:** minSdk 26 (Android 8.0) · compileSdk/targetSdk 35
 - **Language stack:** Kotlin 2.0 · AGP 8.7 · coroutines/Flow · NDK (C++17) for native heuristics
 - **ABIs:** `arm64-v8a`, `armeabi-v7a` (root heuristics are meaningless on x86 emulator images)
@@ -74,9 +74,9 @@ catalog consistency.
 | --- | --- | --- | --- |
 | Boot + PIN gate | `ui.BootSequenceOverlay`, `ui.PinLockScreen` | no | launch flow: triage boot lines → PIN lock (default 1357, prefs-configurable) → console |
 | Dashboard | `ui.DashboardTab`, `data.SessionStore` | no | animated score ring, real engine stat chips, quick actions, posture history chart with tap-inspect, persisted sessions |
-| Scanner | `scanner.DeepScanner`, `scanner.RootkitHeuristics`, `ui.ScanCenter`, `ui.ScannerTab`, `cpp/fortress-native.cpp` | degrades without | 4 phases: /proc walk → memory maps → file audit → native kernel heuristics; scans survive tab switches |
+| Scanner | `scanner.DeepScanner`, `scanner.ArtifactScanner`, `scanner.RootkitHeuristics`, `ui.ScanCenter`, `ui.ScannerTab`, `cpp/fortress-native.cpp` | degrades without | 5 phases: /proc walk → memory maps → file audit → native kernel heuristics → optional bounded artifact sweep; scans survive tab switches |
 | Network | `net.PacketVpnService`, `net.TrafficMonitor`, `net.TapCenter`, `firewall.FirewallManager` | attribution improves with | VPN consent + tap control, live packet feed + counters, per-app block rules, iptables path (root) |
-| Shield | `guard.RealtimeGuard`, `guard.GuardCenter`, `tasks.TaskManager` | root path optional | guard start/stop + live event feed, rooted module polling, boot auto-start pref, process list with force-stop |
+| Shield | `guard.RealtimeGuard`, `guard.GuardCenter`, `tasks.TaskManager` | root path optional | guard start/stop + live event feed, rooted module polling, package risk events, boot auto-start pref, process list with force-stop |
 | CVE | `ui.CveTab`, `cve.CveRepository` + `assets/cve-db.json` | yes, for mitigation shell cmds | 8 bundled CVEs, honest local mitigations only, PATCHED badges persisted |
 | Forensics | `ui.ForensicsTab` | no | session detail tables, kernel snapshot chips, markdown export via share sheet |
 
@@ -114,7 +114,7 @@ hard rate limit 4 req/min.
 
 ```
 fortress_console/
-  module.prop                    # id, name, version v1.4.0 (versionCode 14)
+  module.prop                    # id, name, version v1.5.0 (versionCode 15)
   post-fs-data.sh                # no-op placeholder hook
   system/app/Fortress/Fortress.apk
 ```
@@ -142,7 +142,7 @@ stack in this reference build. While the tap is up, connectivity pauses by
 design; use the iptables path (root) for always-on enforcement. This is stated
 in code (`PacketVpnService` header) so nobody mistakes it for a bug.
 
-## 6. Release 1.4 hardening notes
+## 6. Release 1.5 hardening notes
 
 - JNI heuristics are optional and degrade to a visible limited-mode result when
   the device ABI cannot load the native library.
@@ -156,6 +156,10 @@ in code (`PacketVpnService` header) so nobody mistakes it for a bug.
   iptables path for continuous enforcement.
 - The CVE catalog marks an entry locally actionable only when a concrete
   mitigation command exists; firmware/framework issues remain OTA-only.
+- Settings exposes the bounded deep artifact sweep, root-provider status,
+  guard auto-start, PIN reset, and a portable Magisk/KernelSU module export.
+- KernelSU and APatch are detected explicitly when the root shell is available;
+  the exported module remains systemless and removable through the root manager.
 
 ## 7. Layout of the tree
 

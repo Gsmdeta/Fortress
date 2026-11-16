@@ -35,6 +35,8 @@ def main() -> None:
     shield = read("app/src/main/java/dev/fortress/ui/ShieldTab.kt")
     console_activity = read("app/src/main/java/dev/fortress/ConsoleActivity.kt")
     console_theme = read("app/src/main/java/dev/fortress/ui/ConsoleTheme.kt")
+    settings = read("app/src/main/java/dev/fortress/ui/SettingsTab.kt")
+    artifact_scanner = read("app/src/main/java/dev/fortress/scanner/ArtifactScanner.kt")
     cv = json.loads(read("app/src/main/assets/cve-db.json"))
 
     require('android.permission.BIND_VPN_SERVICE' in manifest, "VPN service must use BIND_VPN_SERVICE")
@@ -53,6 +55,11 @@ def main() -> None:
     require('TopAppBar' in console_theme and 'NavigationBar' in console_theme and 'NavigationRail' in console_theme, "standard Android shell components missing")
     require('Button(' in console_theme and 'OutlinedButton(' in console_theme, "action controls are not Material buttons")
     require('heightIn(min = 48.dp)' in console_theme, "interactive controls must meet the 48dp touch target")
+    require('EXTRA_ROOT_PROVIDER' in read("app/src/main/java/dev/fortress/MainActivity.kt"), "root provider detection missing")
+    require('KernelSU' in read("app/src/main/java/dev/fortress/ConsoleRuntime.kt"), "KernelSU provider missing")
+    require('exportModule' in read("app/src/main/java/dev/fortress/root/MagiskInstaller.kt"), "module export missing")
+    require('deep artifact sweep' in settings.lower() and 'SettingsTab' in read("app/src/main/java/dev/fortress/ConsoleActivity.kt"), "settings screen missing")
+    require('MAX_FILES' in artifact_scanner and 'sha256' in artifact_scanner, "bounded artifact hashing missing")
 
     # Every locally actionable catalog entry must have a concrete mitigation
     # branch. This prevents a UI button that can only report "no mitigation".

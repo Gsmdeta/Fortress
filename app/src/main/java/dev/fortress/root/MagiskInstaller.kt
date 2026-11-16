@@ -4,6 +4,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -25,8 +27,8 @@ object MagiskInstaller {
 
     private const val MODULE_ID = "fortress_console"
     private const val MODULE_NAME = "Fortress Security Console"
-    private const val MODULE_VERSION = "v1.4.0"
-    private const val MODULE_VERSION_CODE = 14
+    private const val MODULE_VERSION = "v1.5.0"
+    private const val MODULE_VERSION_CODE = 15
 
     /** human-readable progress from the packaging/install phases */
     suspend fun installAsSystemApp(
@@ -56,6 +58,25 @@ object MagiskInstaller {
 
         onLine("[4/4] module staged — reboot required to overlay /system")
         return true
+    }
+
+    /**
+     * Build a portable Magisk/KernelSU-compatible module ZIP without
+     * installing it. The archive is safe to inspect, copy, or remove before
+     * the operator chooses to install it from the root manager.
+     */
+    suspend fun exportModule(
+        context: Context,
+        onLine: (String) -> Unit = {},
+    ): File? = withContext(Dispatchers.IO) {
+        val workDir = File(context.cacheDir, "fortress-module-export").apply { deleteRecursively() }
+        val moduleRoot = File(workDir, MODULE_ID)
+        val zipFile = File(context.cacheDir, "$MODULE_ID-export.zip")
+        onLine("staging $MODULE_NAME module")
+        if (stageModule(context, moduleRoot) == null) return@withContext null
+        zipModule(moduleRoot, zipFile)
+        onLine("export ready: ${zipFile.name}")
+        zipFile
     }
 
     /**
