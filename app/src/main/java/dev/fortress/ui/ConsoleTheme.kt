@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package dev.fortress.ui
 
 import androidx.compose.animation.core.animateDpAsState
@@ -29,7 +31,6 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -218,7 +219,7 @@ fun ConsoleButton(
                 1.dp,
                 ConsoleColors.Emerald.copy(alpha = if (enabled) 1f else 0.4f),
             ),
-            colors = OutlinedButtonDefaults.colors(
+            colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = ConsoleColors.Emerald,
                 disabledContentColor = ConsoleColors.Emerald.copy(alpha = 0.4f),
             ),
@@ -298,9 +299,8 @@ fun ConsoleNavigationBar(
                 alwaysShowLabel = false,
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = ConsoleColors.Bg,
-                    selectedIndicatorColor = ConsoleColors.Emerald,
+                    indicatorColor = ConsoleColors.Emerald,
                     unselectedIconColor = ConsoleColors.TextMuted,
-                    indicatorColor = ConsoleColors.PanelBorder,
                 ),
                 modifier = Modifier.semantics { contentDescription = label },
             )
@@ -337,7 +337,7 @@ fun ConsoleNavigationRail(
                 colors = NavigationRailItemDefaults.colors(
                     selectedIconColor = ConsoleColors.Bg,
                     selectedTextColor = ConsoleColors.Emerald,
-                    selectedIndicatorColor = ConsoleColors.Emerald,
+                    indicatorColor = ConsoleColors.Emerald,
                     unselectedIconColor = ConsoleColors.TextMuted,
                     unselectedTextColor = ConsoleColors.TextMuted,
                 ),

@@ -100,16 +100,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Executes `su -c id` and inspects the response for uid=0. */
-    private fun checkRoot(): Boolean = try {
-        val proc = Runtime.getRuntime().exec("su -c id")
-        if (!proc.waitFor(4, TimeUnit.SECONDS)) {
-            proc.destroyForcibly()
-            return false
+    private fun checkRoot(): Boolean {
+        return try {
+            val proc = Runtime.getRuntime().exec("su -c id")
+            if (!proc.waitFor(4, TimeUnit.SECONDS)) {
+                proc.destroyForcibly()
+                false
+            } else {
+                val out = BufferedReader(InputStreamReader(proc.inputStream)).use { it.readText() }
+                out.contains("uid=0")
+            }
+        } catch (e: Exception) {
+            false
         }
-        val out = BufferedReader(InputStreamReader(proc.inputStream)).use { it.readText() }
-        out.contains("uid=0")
-    } catch (e: Exception) {
-        false
     }
 
     /**
