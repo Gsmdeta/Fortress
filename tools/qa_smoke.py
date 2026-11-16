@@ -37,6 +37,7 @@ def main() -> None:
     console_theme = read("app/src/main/java/dev/fortress/ui/ConsoleTheme.kt")
     settings = read("app/src/main/java/dev/fortress/ui/SettingsTab.kt")
     artifact_scanner = read("app/src/main/java/dev/fortress/scanner/ArtifactScanner.kt")
+    cve_repository = read("app/src/main/java/dev/fortress/cve/CveRepository.kt")
     cv = json.loads(read("app/src/main/assets/cve-db.json"))
 
     require('android.permission.BIND_VPN_SERVICE' in manifest, "VPN service must use BIND_VPN_SERVICE")
@@ -60,6 +61,8 @@ def main() -> None:
     require('exportModule' in read("app/src/main/java/dev/fortress/root/MagiskInstaller.kt"), "module export missing")
     require('deep artifact sweep' in settings.lower() and 'SettingsTab' in read("app/src/main/java/dev/fortress/ConsoleActivity.kt"), "settings screen missing")
     require('MAX_FILES' in artifact_scanner and 'sha256' in artifact_scanner, "bounded artifact hashing missing")
+    require('lookupByHash' in artifact_scanner and 'VirusTotalClient' in artifact_scanner, "VirusTotal hash lookup is not wired into artifacts")
+    require('rollbackSoftwarePatch' in cve_repository and 'fortress_patch_ledger' in cve_repository, "CVE rollback ledger missing")
 
     # Every locally actionable catalog entry must have a concrete mitigation
     # branch. This prevents a UI button that can only report "no mitigation".

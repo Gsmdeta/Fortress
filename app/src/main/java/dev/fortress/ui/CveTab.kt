@@ -42,6 +42,7 @@ fun CveTab() {
     var entries by remember { mutableStateOf(repo.load()) }
     var patched by remember { mutableStateOf(prefs.getStringSet("patched_cves", emptySet()) ?: emptySet<String>()) }
     var applying by remember { mutableStateOf<String?>(null) }
+    var rollingBack by remember { mutableStateOf<String?>(null) }
     var expanded by remember { mutableStateOf<String?>(null) }
     val output = remember { mutableStateListOf<String>() }
 
@@ -103,7 +104,27 @@ fun CveTab() {
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     when {
-                        isPatched -> Unit // badge shown above
+                        isPatched -> {
+                            if (repo.canRollback(e.id)) {
+                                ConsoleButton(
+                                    if (rollingBack == e.id) "ROLLING BACK…" else "ROLLBACK",
+                                    primary = false,
+                                    enabled = rollingBack == null && ConsoleRuntime.rooted,
+                                ) {
+                                    rollingBack = e.id
+                                    output.clear()
+                                    scope.launch {
+                                        val result = repo.rollbackSoftwarePatch(e.id) { line -> output.add(line) }
+                                        if (result.success) {
+                                            patched = patched - e.id
+                                            prefs.edit().putStringSet("patched_cves", patched).apply()
+                                        }
+                                        output.add(result.message)
+                                        rollingBack = null
+                                    }
+                                }
+                            }
+                        }
                         e.softwarePatchAvailable -> ConsoleButton(
                             when {
                                 applying == e.id -> "APPLYING…"

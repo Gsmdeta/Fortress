@@ -88,21 +88,25 @@ class CveRepository(private val context: Context) {
     /** Result of an attempted local mitigation. */
     data class PatchResult(val success: Boolean, val message: String)
 
+    private data class PatchPlan(val apply: List<String>, val undo: List<String>)
+
+    private val ledger = context.getSharedPreferences("fortress_patch_ledger", Context.MODE_PRIVATE)
+
     suspend fun applySoftwarePatch(entry: CveEntry, onLine: (String) -> Unit): PatchResult {
         if (!RootShell.isAvailable()) {
             val message = "${entry.id}: root access is required for local mitigation"
             onLine("!! $message")
             return PatchResult(false, message)
         }
-        val cmds = mitigationFor(entry.id)
-        if (cmds.isEmpty()) {
+        val plan = buildPlan(entry.id)
+        if (plan == null) {
             return PatchResult(
                 success = false,
                 message = "${entry.id}: no local mitigation — requires OEM/OTA update",
             )
         }
-        onLine("applying local mitigation for ${entry.id} (${cmds.size} step(s))")
-        for (cmd in cmds) {
+        onLine("applying local mitigation for ${entry.id} (${plan.apply.size} step(s))")
+        for (cmd in plan.apply) {
             val r = RootShell.exec(cmd, onLine = null, timeoutMs = 8_000)
             if (!r.ok) {
                 onLine("!! '$cmd' failed rc=${r.exitCode}")
@@ -110,7 +114,58 @@ class CveRepository(private val context: Context) {
             }
             onLine("ok: $cmd")
         }
-        return PatchResult(true, "${entry.id}: ${cmds.size} mitigation(s) applied")
+        val undoArray = JSONArray().apply { plan.undo.forEach { put(it) } }
+        ledger.edit().putString(entry.id, undoArray.toString()).apply()
+        return PatchResult(true, "${entry.id}: mitigation applied; rollback is available")
+    }
+
+    fun canRollback(id: String): Boolean = ledger.contains(id)
+
+    suspend fun rollbackSoftwarePatch(id: String, onLine: (String) -> Unit): PatchResult {
+        if (!RootShell.isAvailable()) return PatchResult(false, "$id: root access is required for rollback")
+        val raw = ledger.getString(id, null) ?: return PatchResult(false, "$id: no rollback record")
+        val undo = runCatching {
+            val arr = JSONArray(raw)
+            (0 until arr.length()).map { arr.getString(it) }
+        }.getOrElse { return PatchResult(false, "$id: rollback record is corrupt") }
+        for (cmd in undo) {
+            if (cmd.isBlank()) continue
+            val result = RootShell.exec(cmd, timeoutMs = 8_000)
+            if (!result.ok) return PatchResult(false, "$id: rollback failed at '$cmd'")
+            onLine("rollback ok: $cmd")
+        }
+        ledger.edit().remove(id).apply()
+        return PatchResult(true, "$id: rollback complete")
+    }
+
+    private suspend fun buildPlan(id: String): PatchPlan? = when (id) {
+        "CVE-2024-0044" -> {
+            val previous = RootShell.exec("settings get global adb_enabled").output.lastOrNull()?.trim()
+                ?.takeIf { it == "0" || it == "1" } ?: "1"
+            PatchPlan(listOf("settings put global adb_enabled 0"), listOf("settings put global adb_enabled $previous"))
+        }
+        "CVE-2022-22071" -> {
+            val kptr = RootShell.exec("sysctl -n kernel.kptr_restrict").output.lastOrNull()?.trim()
+            val dmesg = RootShell.exec("sysctl -n kernel.dmesg_restrict").output.lastOrNull()?.trim()
+            val mode = RootShell.exec("stat -c %a /proc/kallsyms 2>/dev/null").output.lastOrNull()?.trim()
+            if (kptr.isNullOrBlank() || dmesg.isNullOrBlank()) null else PatchPlan(
+                apply = listOf(
+                    "sysctl -w kernel.kptr_restrict=2",
+                    "sysctl -w kernel.dmesg_restrict=1",
+                    "chmod 0400 /proc/kallsyms",
+                ),
+                undo = listOf(
+                    "sysctl -w kernel.kptr_restrict $kptr",
+                    "sysctl -w kernel.dmesg_restrict $dmesg",
+                    mode?.let { "chmod $it /proc/kallsyms" }.orEmpty(),
+                ),
+            )
+        }
+        "CVE-2023-40082" -> PatchPlan(
+            apply = listOf("am force-stop com.google.android.webview"),
+            undo = emptyList(),
+        )
+        else -> null
     }
 
     companion object {

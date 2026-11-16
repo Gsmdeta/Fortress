@@ -41,6 +41,7 @@ data class GuardEvent(
         const val TYPE_PACKAGE_REMOVED = "PACKAGE_REMOVED"
         const val TYPE_PACKAGE_RISK = "PACKAGE_RISK"
         const val TYPE_CLIPBOARD = "CLIPBOARD"
+        const val TYPE_FILE_CHANGED = "FILE_CHANGED"
     }
 }
 
@@ -66,6 +67,7 @@ data class GuardEvent(
 class RealtimeGuard : android.app.Service() {
 
     private var moduleObserver: FileObserver? = null
+    private var downloadObserver: FileObserver? = null
     private val guardScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var modulePollingJob: Job? = null
     private var packageReceiver: BroadcastReceiver? = null
@@ -75,6 +77,7 @@ class RealtimeGuard : android.app.Service() {
         super.onCreate()
         ConsoleActivity.createNotificationChannels(this)
         startModuleObserver()
+        startDownloadObserver()
         startPackageWatcher()
         startClipboardGuard()
     }
@@ -114,6 +117,18 @@ class RealtimeGuard : android.app.Service() {
                 if (type == GuardEvent.TYPE_MODULE_ADDED) {
                     notifyUser("module installed: $path", "review it in Shield → Guard feed")
                 }
+            }
+        }.also { it.startWatching() }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startDownloadObserver() {
+        val downloadDir = File("/sdcard/Download")
+        if (!downloadDir.exists() || !downloadDir.isDirectory) return
+        downloadObserver = object : FileObserver(downloadDir.absolutePath, CREATE or CLOSE_WRITE or MOVED_TO) {
+            override fun onEvent(event: Int, path: String?) {
+                if (path.isNullOrBlank()) return
+                GuardCenter.emit(GuardEvent(GuardEvent.TYPE_FILE_CHANGED, "/sdcard/Download/$path"))
             }
         }.also { it.startWatching() }
     }
@@ -247,6 +262,7 @@ class RealtimeGuard : android.app.Service() {
 
     override fun onDestroy() {
         moduleObserver?.stopWatching()
+        downloadObserver?.stopWatching()
         packageReceiver?.let { runCatching { unregisterReceiver(it) } }
         clipboardListener?.let {
             getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(it)
