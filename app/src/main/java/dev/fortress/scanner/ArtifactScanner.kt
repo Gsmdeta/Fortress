@@ -24,7 +24,7 @@ class ArtifactScanner(private val context: Context) {
         "frida-gadget", "meterpreter", "metasploit", "reverse_tcp", "credential-dump",
     )
 
-    suspend fun scan(rooted: Boolean, onDetail: (String) -> Unit): Result = withContext(Dispatchers.IO) {
+    suspend fun scan(rooted: Boolean, onDetail: suspend (String) -> Unit): Result = withContext(Dispatchers.IO) {
         val candidates = if (rooted) rootCandidates() else localCandidates()
         val findings = mutableListOf<DeepScanner.ScanProgress.Finding>()
         var scanned = 0
@@ -66,13 +66,13 @@ class ArtifactScanner(private val context: Context) {
         "find /storage/emulated/0 /data/local/tmp /data/adb/modules /system/app /system/priv-app -type f -size -20M 2>/dev/null | head -300"
     ).output.filter { it.isNotBlank() }.distinct()
 
-    private fun rootSize(path: String): Long = RootShell.exec("stat -c %s ${quote(path)} 2>/dev/null").output
+    private suspend fun rootSize(path: String): Long = RootShell.exec("stat -c %s ${quote(path)} 2>/dev/null").output
         .lastOrNull()?.trim()?.toLongOrNull() ?: -1L
 
-    private fun rootSha256(path: String): String? = RootShell.exec("sha256sum ${quote(path)} 2>/dev/null").output
+    private suspend fun rootSha256(path: String): String? = RootShell.exec("sha256sum ${quote(path)} 2>/dev/null").output
         .lastOrNull()?.trim()?.split(Regex("\\s+"))?.firstOrNull()
 
-    private fun rootMarkerHit(path: String): Boolean = RootShell.exec(
+    private suspend fun rootMarkerHit(path: String): Boolean = RootShell.exec(
         "head -c 65536 ${quote(path)} 2>/dev/null | strings | grep -E -i '${suspiciousMarkers.joinToString("|")}'"
     ).output.isNotEmpty()
 
