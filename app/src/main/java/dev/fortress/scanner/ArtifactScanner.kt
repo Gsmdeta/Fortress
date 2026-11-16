@@ -91,8 +91,17 @@ class ArtifactScanner(private val context: Context) {
     }.getOrNull()
 
     private fun localMarkerHit(file: File): Boolean = runCatching {
-        val sample = file.inputStream().use { it.readNBytes(64 * 1024) }
-            .toString(Charsets.UTF_8)
+        val buffer = ByteArray(64 * 1024)
+        val count = file.inputStream().use { input ->
+            var offset = 0
+            while (offset < buffer.size) {
+                val read = input.read(buffer, offset, buffer.size - offset)
+                if (read <= 0) break
+                offset += read
+            }
+            offset
+        }
+        val sample = buffer.copyOf(count).toString(Charsets.UTF_8)
             .lowercase()
         suspiciousMarkers.any { sample.contains(it) }
     }.getOrDefault(false)
