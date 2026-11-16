@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.fortress.cve.CveRepository
+import dev.fortress.ConsoleRuntime
 import kotlinx.coroutines.launch
 
 /**
@@ -104,8 +105,12 @@ fun CveTab() {
                     when {
                         isPatched -> Unit // badge shown above
                         e.softwarePatchAvailable -> ConsoleButton(
-                            if (applying == e.id) "APPLYING…" else "APPLY PATCH",
-                            enabled = applying == null,
+                            when {
+                                applying == e.id -> "APPLYING…"
+                                !ConsoleRuntime.rooted -> "ROOT REQUIRED"
+                                else -> "APPLY PATCH"
+                            },
+                            enabled = applying == null && ConsoleRuntime.rooted,
                         ) {
                             applying = e.id
                             output.clear()

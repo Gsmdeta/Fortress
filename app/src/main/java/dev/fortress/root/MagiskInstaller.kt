@@ -1,7 +1,9 @@
 package dev.fortress.root
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -23,8 +25,8 @@ object MagiskInstaller {
 
     private const val MODULE_ID = "fortress_console"
     private const val MODULE_NAME = "Fortress Security Console"
-    private const val MODULE_VERSION = "v1.3.0"
-    private const val MODULE_VERSION_CODE = 13
+    private const val MODULE_VERSION = "v1.4.0"
+    private const val MODULE_VERSION_CODE = 14
 
     /** human-readable progress from the packaging/install phases */
     suspend fun installAsSystemApp(
@@ -116,13 +118,17 @@ object MagiskInstaller {
                 apk.inputStream().use { it.copyTo(out) }
                 session.fsync(out)
             }
-            // The status PendingIntent is where the system reports the user's
-            // install decision; we route it to our own package's receiver.
-            val statusIntent = Intent(Intent.ACTION_INSTALL_PACKAGE)
+            // The status PendingIntent is delivered to a broadcast receiver;
+            // using ACTION_INSTALL_PACKAGE as an activity loses the result on
+            // modern Android.
+            val statusIntent = Intent(ACTION_INSTALL_STATUS)
                 .setPackage(context.packageName)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            val pi = android.app.PendingIntent.getActivity(
-                context, 0, statusIntent, android.app.PendingIntent.FLAG_MUTABLE
+            val pi = android.app.PendingIntent.getBroadcast(
+                context,
+                0,
+                statusIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or
+                    android.app.PendingIntent.FLAG_MUTABLE,
             )
             session.commit(pi.intentSender)
             onLine("session committed — awaiting user consent dialog")
@@ -140,5 +146,20 @@ object MagiskInstaller {
         val r = RootShell.exec("svc power reboot", onLine = onLine, timeoutMs = 8_000)
         if (!r.ok) onLine("!! reboot command failed — please reboot manually")
         return r.ok
+    }
+
+    private const val ACTION_INSTALL_STATUS = "dev.fortress.root.INSTALL_STATUS"
+}
+
+/** Receives the user-visible PackageInstaller result for the non-root path. */
+class InstallStatusReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)
+        val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
+        context.getSharedPreferences("fortress_install", Context.MODE_PRIVATE)
+            .edit()
+            .putInt("last_status", status)
+            .putString("last_message", message)
+            .apply()
     }
 }

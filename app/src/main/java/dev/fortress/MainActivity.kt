@@ -1,11 +1,14 @@
 package dev.fortress
 
+import android.Manifest
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import dev.fortress.ui.dpPx
@@ -16,6 +19,7 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
 
 /**
  * Entry activity: environment triage before the console opens.
@@ -33,6 +37,9 @@ import java.io.InputStreamReader
 class MainActivity : AppCompatActivity() {
 
     private lateinit var status: TextView
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* The console remains usable when notifications are declined. */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +63,13 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(status)
         setContentView(root)
+
+        if (Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         startTriage()
     }
@@ -86,13 +100,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** Executes `su -c id` and inspects the response for uid=0. */
-    private fun checkRoot(): Boolean = try {
-        val proc = Runtime.getRuntime().exec("su -c id")
-        val out = BufferedReader(InputStreamReader(proc.inputStream)).use { it.readText() }
-        proc.waitFor()
-        out.contains("uid=0")
-    } catch (e: Exception) {
-        false
+    private fun checkRoot(): Boolean {
+        return try {
+            val proc = Runtime.getRuntime().exec("su -c id")
+            if (!proc.waitFor(4, TimeUnit.SECONDS)) {
+                proc.destroyForcibly()
+                false
+            } else {
+                val out = BufferedReader(InputStreamReader(proc.inputStream)).use { it.readText() }
+                out.contains("uid=0")
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**

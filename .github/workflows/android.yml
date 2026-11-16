@@ -49,7 +49,7 @@ jobs:
       # install the command-line tools (sdkmanager) explicitly. The action also
       # exports ANDROID_HOME for the sdkmanager steps below.
       - name: Set up Android SDK (cmdline-tools)
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses > /dev/null || true
@@ -63,8 +63,11 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: Run source smoke contracts
+        run: python3 tools/qa_smoke.py
+
+      - name: Run Gradle QA and build
+        run: ./gradlew test lintDebug assembleDebug --stacktrace --no-daemon
 
       - name: Upload debug APK artifact
         uses: actions/upload-artifact@v4

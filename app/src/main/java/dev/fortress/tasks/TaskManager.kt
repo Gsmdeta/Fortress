@@ -98,6 +98,14 @@ class TaskManager(private val context: Context) {
 
     /** force-stop via the su stream — the only write operation in this class. */
     suspend fun kill(pkg: String, onLine: (String) -> Unit = {}): Boolean {
+        if (!pkg.matches(Regex("[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)+"))) {
+            onLine("force-stop rejected: invalid package name")
+            return false
+        }
+        if (!RootShell.isAvailable()) {
+            onLine("force-stop $pkg unavailable — root is required")
+            return false
+        }
         val r = RootShell.exec("am force-stop $pkg", onLine = null)
         onLine(if (r.ok) "force-stop $pkg ok" else "force-stop $pkg failed rc=${r.exitCode}")
         return r.ok

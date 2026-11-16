@@ -14,6 +14,15 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dev.fortress.ConsoleActivity
 import dev.fortress.R
+import dev.fortress.root.RootShell
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import java.io.File
@@ -56,6 +65,8 @@ data class GuardEvent(
 class RealtimeGuard : android.app.Service() {
 
     private var moduleObserver: FileObserver? = null
+    private val guardScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var modulePollingJob: Job? = null
     private var packageReceiver: BroadcastReceiver? = null
     private var clipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
 
@@ -81,11 +92,13 @@ class RealtimeGuard : android.app.Service() {
             else 0,
         )
         isRunning = true
+        startRootModulePolling()
         return START_STICKY // guard must survive memory pressure
     }
 
     // -- watcher 1: Magisk module directory -----------------------------------
 
+    @Suppress("DEPRECATION")
     private fun startModuleObserver() {
         val modulesDir = File("/data/adb/modules")
         if (!modulesDir.exists()) return // non-rooted device — nothing to watch
@@ -102,6 +115,42 @@ class RealtimeGuard : android.app.Service() {
                 }
             }
         }.also { it.startWatching() }
+    }
+
+    /**
+     * FileObserver runs in the app UID and therefore usually cannot traverse
+     * `/data/adb/modules` even when `su` is available. The rooted path polls a
+     * bounded directory listing through RootShell and diffs names, preserving
+     * the same event contract without pretending an unprivileged observer can
+     * see Magisk's private state.
+     */
+    private fun startRootModulePolling() {
+        if (modulePollingJob != null) return
+        modulePollingJob = guardScope.launch {
+            var previous = emptySet<String>()
+            var initialized = false
+            while (isActive) {
+                if (RootShell.isAvailable()) {
+                    val current = RootShell.exec(
+                        "find /data/adb/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' 2>/dev/null"
+                    ).output.filter { it.isNotBlank() }.toSet()
+                    if (!initialized) {
+                        previous = current
+                        initialized = true
+                    } else {
+                        (current - previous).forEach { name ->
+                            GuardCenter.emit(GuardEvent(GuardEvent.TYPE_MODULE_ADDED, name))
+                            notifyUser("module installed: $name", "review it in Shield → Guard feed")
+                        }
+                        (previous - current).forEach { name ->
+                            GuardCenter.emit(GuardEvent(GuardEvent.TYPE_MODULE_REMOVED, name))
+                        }
+                        previous = current
+                    }
+                }
+                delay(5_000)
+            }
+        }
     }
 
     // -- watcher 2: package lifecycle -------------------------------------------
@@ -174,6 +223,9 @@ class RealtimeGuard : android.app.Service() {
         clipboardListener?.let {
             getSystemService(ClipboardManager::class.java)?.removePrimaryClipChangedListener(it)
         }
+        modulePollingJob?.cancel()
+        modulePollingJob = null
+        guardScope.cancel()
         isRunning = false
         super.onDestroy()
     }
@@ -209,7 +261,7 @@ class BootReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED &&
             intent.action != "android.intent.action.QUICKBOOT_POWERON"
         ) return
-        val prefs = context.getSharedPreferences("fortress_fw", Context.MODE_PRIVATE)
+        val prefs = context.getSharedPreferences("fortress_guard", Context.MODE_PRIVATE)
         if (prefs.getBoolean("guard_auto_start", false)) {
             RealtimeGuard.start(context)
         }

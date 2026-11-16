@@ -33,6 +33,7 @@ import dev.fortress.guard.GuardCenter
 import dev.fortress.guard.GuardEvent
 import dev.fortress.guard.RealtimeGuard
 import dev.fortress.tasks.TaskManager
+import dev.fortress.ConsoleRuntime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -53,7 +54,7 @@ fun ShieldTab() {
 
     // guard state
     var guardRunning by remember { mutableStateOf(RealtimeGuard.isRunning) }
-    val prefs = remember { context.getSharedPreferences("fortress_fw", Context.MODE_PRIVATE) }
+    val prefs = remember { context.getSharedPreferences("fortress_guard", Context.MODE_PRIVATE) }
     var autoStart by remember { mutableStateOf(prefs.getBoolean("guard_auto_start", false)) }
     val guardEvents = remember { mutableStateListOf<GuardEvent>() }
     LaunchedEffect(Unit) {
@@ -69,7 +70,9 @@ fun ShieldTab() {
     var refreshTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(refreshTick) {
         loadingTasks = true
-        taskRows = withContext(Dispatchers.IO) { tasks.snapshot() }
+        taskRows = withContext(Dispatchers.IO) {
+            if (ConsoleRuntime.rooted) tasks.snapshotRooted() else tasks.snapshot()
+        }
         loadingTasks = false
     }
 
@@ -179,6 +182,7 @@ fun ShieldTab() {
                             ConsoleButton(
                                 "KILL",
                                 primary = false,
+                                enabled = ConsoleRuntime.rooted,
                                 modifier = Modifier.width(72.dp),
                             ) {
                                 scope.launch {

@@ -9,6 +9,7 @@ import java.io.BufferedReader
 import java.io.BufferedWriter
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Singleton `su` shell.
@@ -33,6 +34,7 @@ object RootShell {
 
     private const val SENTINEL = "__FORTRESS_RC_"
     private const val TAG = "RootShell"
+    private val commandSequence = AtomicLong(0)
 
     /** Result envelope for a completed (or timed-out) command. */
     data class ShellResult(
@@ -61,12 +63,20 @@ object RootShell {
         timeoutMs: Long = 10_000,
     ): ShellResult = mutex.withLock {
         withContext(Dispatchers.IO) {
+            if (cmd.isBlank() || cmd.length > MAX_COMMAND_LENGTH ||
+                cmd.any { it == '\u0000' || it == '\r' || it == '\n' }) {
+                return@withContext ShellResult(
+                    exitCode = 126,
+                    output = listOf("rejected unsafe root command"),
+                )
+            }
             val proc = ensureShell()
+            val sentinel = "$SENTINEL${commandSequence.incrementAndGet()}_"
 
             // Sentinel trick: echo the exit code with a unique token so we know
             // exactly where OUR command's output ends inside the shared stream.
             stdin!!.apply {
-                write("($cmd); echo $SENTINEL\$?\n")
+                write("($cmd); echo $sentinel\$?\n")
                 flush()
             }
 
@@ -75,8 +85,8 @@ object RootShell {
                 var exit = -1
                 while (true) {
                     val line = stdout!!.readLine() ?: break
-                    if (line.startsWith(SENTINEL)) {
-                        exit = line.removePrefix(SENTINEL).trim().toIntOrNull() ?: -1
+                    if (line.startsWith(sentinel)) {
+                        exit = line.removePrefix(sentinel).trim().toIntOrNull() ?: -1
                         break
                     }
                     lines += line
@@ -110,7 +120,9 @@ object RootShell {
             killShell()
         }
         android.util.Log.i(TAG, "spawning su session")
-        val p = Runtime.getRuntime().exec("su")
+        val p = ProcessBuilder("su")
+            .redirectErrorStream(true)
+            .start()
         process = p
         stdin = BufferedWriter(OutputStreamWriter(p.outputStream))
         stdout = BufferedReader(InputStreamReader(p.inputStream))
@@ -123,4 +135,6 @@ object RootShell {
         stdin = null
         stdout = null
     }
+
+    private const val MAX_COMMAND_LENGTH = 4096
 }

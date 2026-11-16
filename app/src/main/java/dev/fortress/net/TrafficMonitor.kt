@@ -66,7 +66,7 @@ class TrafficMonitor(
 
     private fun inspectIpv4(p: ByteArray, len: Int) {
         val ihl = (p[0].toInt() and 0xF) * 4
-        if (len < ihl) return
+        if (ihl < 20 || len < ihl) return
         val protoNum = p[9].toInt() and 0xFF
         val proto = when (protoNum) {
             6 -> "TCP"; 17 -> "UDP"; 1 -> "ICMP"; else -> return
@@ -137,6 +137,7 @@ class TrafficMonitor(
     }
 
     private fun refreshTable() {
+        firewall.invalidateAttributionCache()
         val map = mutableMapOf<Int, Int>()
         for (tbl in listOf("tcp", "tcp6", "udp", "udp6")) {
             val f = File("/proc/net/$tbl")

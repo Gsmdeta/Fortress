@@ -1,6 +1,9 @@
 package dev.fortress.ui
 
 import android.content.Context
+import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -54,8 +57,32 @@ object PinLock {
     fun check(context: Context, pin: String): Boolean =
         pin == prefs(context).getString(KEY_PIN, DEFAULT_PIN)
 
-    private fun prefs(context: Context) =
+    fun setPin(context: Context, pin: String): Boolean {
+        if (!pin.matches(Regex("\\d{4}"))) return false
+        prefs(context).edit().putString(KEY_PIN, pin).apply()
+        return true
+    }
+
+    fun setEnabled(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean(KEY_ENABLED, enabled).apply()
+    }
+
+    private fun prefs(context: Context): SharedPreferences = runCatching {
+        val master = MasterKey.Builder(context.applicationContext)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context.applicationContext,
+            PREFS,
+            master,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }.getOrElse {
+        // Devices with a broken/unsupported keystore still get a usable
+        // console; the fallback is intentionally limited to this local gate.
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    }
 }
 
 @Composable

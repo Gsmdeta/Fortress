@@ -5,7 +5,7 @@ Fortress web command center (`dev.fortress.console` APK). The tree ships a
 Gradle wrapper (Gradle 8.10.2) and a GitHub Actions workflow, so it builds
 out of the box — locally or on CI — with no Android Studio required.
 
-- **Package:** `dev.fortress.console` · versionCode `13` · versionName `1.3.0`
+- **Package:** `dev.fortress.console` · versionCode `14` · versionName `1.4.0`
 - **SDK targets:** minSdk 26 (Android 8.0) · compileSdk/targetSdk 35
 - **Language stack:** Kotlin 2.0 · AGP 8.7 · coroutines/Flow · NDK (C++17) for native heuristics
 - **ABIs:** `arm64-v8a`, `armeabi-v7a` (root heuristics are meaningless on x86 emulator images)
@@ -54,6 +54,16 @@ pinned toolchain (`ndk;27.0.12077973`, `cmake;3.22.1`), and runs
 
 3. Install on the device: `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
 
+Before a Gradle build, run the dependency-free source smoke gate:
+
+```bash
+python3 tools/qa_smoke.py
+```
+
+GitHub Actions runs this gate before `assembleDebug`; it checks the VPN binding,
+optional JNI loading, defensive root-shell boundary, rooted scan path, and CVE
+catalog consistency.
+
 > **Gradle wrapper note:** `gradlew` (+x), `gradlew.bat` and
 > `gradle/wrapper/{gradle-wrapper.jar,gradle-wrapper.properties}` are part of
 > this tree now — no `gradle wrapper` bootstrap step is needed.
@@ -66,15 +76,17 @@ pinned toolchain (`ndk;27.0.12077973`, `cmake;3.22.1`), and runs
 | Dashboard | `ui.DashboardTab`, `data.SessionStore` | no | animated score ring, real engine stat chips, quick actions, posture history chart with tap-inspect, persisted sessions |
 | Scanner | `scanner.DeepScanner`, `scanner.RootkitHeuristics`, `ui.ScanCenter`, `ui.ScannerTab`, `cpp/fortress-native.cpp` | degrades without | 4 phases: /proc walk → memory maps → file audit → native kernel heuristics; scans survive tab switches |
 | Network | `net.PacketVpnService`, `net.TrafficMonitor`, `net.TapCenter`, `firewall.FirewallManager` | attribution improves with | VPN consent + tap control, live packet feed + counters, per-app block rules, iptables path (root) |
-| Shield | `guard.RealtimeGuard`, `guard.GuardCenter`, `tasks.TaskManager` | root path optional | guard start/stop + live event feed, boot auto-start pref, process list with force-stop |
-| CVE | `ui.CveTab`, `cve.CveRepository` + `assets/cve-db.json` | yes, for mitigation shell cmds | 8 bundled CVEs, one-tap local mitigations, PATCHED badges persisted |
+| Shield | `guard.RealtimeGuard`, `guard.GuardCenter`, `tasks.TaskManager` | root path optional | guard start/stop + live event feed, rooted module polling, boot auto-start pref, process list with force-stop |
+| CVE | `ui.CveTab`, `cve.CveRepository` + `assets/cve-db.json` | yes, for mitigation shell cmds | 8 bundled CVEs, honest local mitigations only, PATCHED badges persisted |
 | Forensics | `ui.ForensicsTab` | no | session detail tables, kernel snapshot chips, markdown export via share sheet |
 
-**Console UI:** Jetpack Compose (Kotlin 2.0 native compiler plugin) porting the
-web command center's design language — zinc-950 background, zinc-900/60
-panels with zinc-800 borders, emerald-400/amber-400/red-500 accents only,
-monospace readouts, uppercase spaced micro-labels, 44dp touch targets.
-Responsive: bottom tab strip on phones, side rail on ≥600dp screens.
+**Console UI:** Jetpack Compose (Kotlin 2.0 native compiler plugin) using
+Material 3 navigation patterns while preserving the cyber-console language —
+zinc-950 background, zinc-900/60 panels with zinc-800 borders,
+emerald-400/amber-400/red-500 accents only, monospace readouts, uppercase
+spaced micro-labels, 48dp touch targets, accessible navigation semantics.
+Responsive: Material bottom navigation on phones, navigation rail on ≥600dp
+screens.
 
 **Optional:** `vt.VirusTotalClient` — hash-first VirusTotal lookup; upload only
 with explicit user consent, API key stored in EncryptedSharedPreferences,
@@ -102,7 +114,7 @@ hard rate limit 4 req/min.
 
 ```
 fortress_console/
-  module.prop                    # id, name, version v1.2.0 (versionCode 12)
+  module.prop                    # id, name, version v1.4.0 (versionCode 14)
   post-fs-data.sh                # no-op placeholder hook
   system/app/Fortress/Fortress.apk
 ```
@@ -122,7 +134,7 @@ remove the module in the Magisk app + reboot. Non-root fallback uses a standard
 | `RECEIVE_BOOT_COMPLETED` | `guard.BootReceiver` re-arms the guard only on user opt-in (`guard_auto_start` pref) |
 | `QUERY_ALL_PACKAGES` | per-app traffic attribution + task list; Play-policy restricted, acceptable for sideload/lab distribution |
 | `REQUEST_INSTALL_PACKAGES` | PackageInstaller fallback in `MagiskInstaller` |
-| `android.permission="android.service.VpnService"` (service) | system-held gate so only the framework binds `PacketVpnService` |
+| `android.permission.BIND_VPN_SERVICE` (service) | system-held gate so only the framework binds `PacketVpnService` |
 
 **VPN behavior caveat:** the tap classifies and *drops* (firewall verdicts) but
 does not re-inject allowed traffic — there is intentionally no userspace TCP
@@ -130,12 +142,27 @@ stack in this reference build. While the tap is up, connectivity pauses by
 design; use the iptables path (root) for always-on enforcement. This is stated
 in code (`PacketVpnService` header) so nobody mistakes it for a bug.
 
-## 6. Layout of the tree
+## 6. Release 1.4 hardening notes
+
+- JNI heuristics are optional and degrade to a visible limited-mode result when
+  the device ABI cannot load the native library.
+- Root scans use the `su` session for privileged `/proc` and `/data/adb`
+  listings; the unrooted path remains bounded and honest about visibility.
+- The syscall-table check uses kernel data/rodata bounds, avoiding the false
+  critical result caused by comparing a data symbol to `_stext`/`_etext`.
+- The VPN service uses the correct `BIND_VPN_SERVICE` permission, closes its
+  TUN descriptor, and prevents duplicate readers. Capture mode still pauses
+  routed connectivity by design; rooted operators should use the DROP-only
+  iptables path for continuous enforcement.
+- The CVE catalog marks an entry locally actionable only when a concrete
+  mitigation command exists; firmware/framework issues remain OTA-only.
+
+## 7. Layout of the tree
 
 ```
 app/src/main/
   cpp/                    CMakeLists.txt · fortress-native.cpp (JNI heuristics)
-  java/dev/fortress/      MainActivity · ConsoleActivity (+ 5 tab stubs)
+  java/dev/fortress/      MainActivity · ConsoleActivity (+ 6 live console tabs)
     root/                 RootShell · MagiskInstaller
     scanner/              DeepScanner · RootkitHeuristics
     net/                  PacketVpnService · TrafficMonitor
@@ -152,7 +179,7 @@ app/src/main/
 No layout XML by design — every screen is programmatic Kotlin, keeping the
 delivery diff-friendly.
 
-## 7. Disclaimer
+## 8. Disclaimer
 
 Fortress is **defensive tooling for devices you own**: it detects, logs,
 and hardens. It does not patch binaries, write kernel memory, unload modules,

@@ -88,14 +88,25 @@ class DeepScanner(private val context: Context) {
     // -- phase 1: process walk (/proc/<pid>/cmdline) ------------------------
 
     /** Name fragments that justify elevating a process to a WARN finding.
-     *  Detection only: we observe and report, we never kill on a match. */
+     *  Detection only: we observe and report, we never kill on a match. Root
+     *  managers such as Zygisk/MagiskHide are reported as informational
+     *  posture facts instead of being treated as malware by default. */
     private val suspiciousProcNames = listOf(
-        "zygisk", "shamiko", "magiskhide", "hideproc", "denyproc",
+        "hideproc", "denyproc", "frida-server", "riru-core",
     )
+
+    private val rootManagerProcNames = listOf("zygisk", "shamiko", "magiskhide")
 
     private suspend fun phase1Processes(rooted: Boolean) {
         emit(ScanProgress.Phase(1, 4, "process walk /proc/*/cmdline"))
-        val pids = File("/proc").listFiles()?.filter { it.name.all(Char::isDigit) } ?: emptyList()
+        val pids = if (rooted) {
+            RootShell.exec("ls -1 /proc | grep -E '^[0-9]+$' | head -200")
+                .output
+                .filter { it.all(Char::isDigit) }
+                .map { File("/proc/$it") }
+        } else {
+            File("/proc").listFiles()?.filter { it.name.all(Char::isDigit) } ?: emptyList()
+        }
         var inspected = 0
         for (pidDir in pids) {
             val cmdline = readProcFile(pidDir.resolve("cmdline"), rooted) ?: continue
@@ -106,6 +117,12 @@ class DeepScanner(private val context: Context) {
                     Severity.WARN,
                     "suspicious process",
                     "pid ${pidDir.name}: $name matches hide/anti-detect pattern"
+                )
+            } else if (rootManagerProcNames.any { name.lowercase().contains(it) }) {
+                addFinding(
+                    Severity.INFO,
+                    "root manager component",
+                    "pid ${pidDir.name}: $name observed; review only if unexpected"
                 )
             }
         }
@@ -149,8 +166,12 @@ class DeepScanner(private val context: Context) {
 
     private suspend fun phase3FileAudit(rooted: Boolean) {
         emit(ScanProgress.Phase(3, 4, "file audit /system/priv-app + /data/adb/modules"))
-        val privApp = File("/system/priv-app")
-        val privDirs = privApp.listFiles()?.size ?: 0
+        val privDirs = if (rooted) {
+            RootShell.exec("find /system/priv-app -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l")
+                .output.lastOrNull()?.trim()?.toIntOrNull() ?: 0
+        } else {
+            File("/system/priv-app").listFiles()?.size ?: 0
+        }
         emit(ScanProgress.Detail(3, "priv-app entries: $privDirs"))
         for (su in listOf("/system/bin/su", "/system/xbin/su", "/sbin/su")) {
             if (File(su).exists()) {
@@ -160,19 +181,24 @@ class DeepScanner(private val context: Context) {
 
         // /data/adb/modules is only traversable with root; a SecurityException on
         // non-rooted devices is the normal path, not an error condition.
-        try {
-            val modulesDir = File("/data/adb/modules")
-            val modules: Array<File>? = modulesDir.listFiles()
-            if (modules != null) {
-                for (m in modules) {
-                    val disableFlag = File(m, "disable").exists()
-                    emit(ScanProgress.Detail(3, "module ${m.name}${if (disableFlag) " [disabled]" else ""}"))
-                    if (m.name.lowercase().contains("shamiko") || m.name.lowercase().contains("hide")) {
-                        addFinding(Severity.WARN, "hide-capable module", "${m.name} can conceal root state from scanners")
+        if (rooted) {
+            val moduleNames = RootShell.exec(
+                "find /data/adb/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' 2>/dev/null"
+            ).output.filter { it.isNotBlank() }
+            if (moduleNames.isEmpty()) {
+                emit(ScanProgress.Detail(3, "/data/adb/modules empty or unreadable"))
+            } else {
+                for (name in moduleNames) {
+                    val disableFlag = RootShell.exec(
+                        "test -e /data/adb/modules/${shellQuote(name)}/disable"
+                    ).ok
+                    emit(ScanProgress.Detail(3, "module $name${if (disableFlag) " [disabled]" else ""}"))
+                    if (name.lowercase().contains("shamiko") || name.lowercase().contains("hide")) {
+                        addFinding(Severity.WARN, "hide-capable module", "$name can conceal root state from scanners")
                     }
                 }
             }
-        } catch (e: SecurityException) {
+        } else {
             emit(ScanProgress.Detail(3, "/data/adb/modules not readable without root"))
         }
     }
@@ -216,7 +242,10 @@ class DeepScanner(private val context: Context) {
             if (!rooted) return null
             RootShell.exec("cat ${file.absolutePath}").output.joinToString("\n").ifEmpty { null }
         } catch (e: java.io.IOException) {
-            null // process died mid-read — ignore
+            if (!rooted) null else RootShell.exec("cat ${file.absolutePath}").output.joinToString("\n").ifEmpty { null }
         }
     }
+
+    private fun shellQuote(value: String): String =
+        "'" + value.replace("'", "'\"'\"'") + "'"
 }

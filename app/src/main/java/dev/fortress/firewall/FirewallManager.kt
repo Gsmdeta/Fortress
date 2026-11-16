@@ -41,12 +41,14 @@ class FirewallManager(private val context: Context) {
         context.getSharedPreferences("fortress_fw", Context.MODE_PRIVATE)
 
     private val hits = ConcurrentHashMap<String, Int>()
+    private val uidPackages = ConcurrentHashMap<Int, String>()
 
     // -- rule editing ----------------------------------------------------------
 
     fun setBlockRule(pkg: String, net: Net, enabled: Boolean) {
         if (!enabled) {
             prefs.edit().remove("rule:$pkg").apply()
+            uidPackages.entries.removeIf { it.value == pkg }
             return
         }
         val encoded = when (net) {
@@ -55,12 +57,19 @@ class FirewallManager(private val context: Context) {
             Net.BOTH -> "wifi:1,data:1"
         }
         prefs.edit().putString("rule:$pkg", encoded).apply()
+        uidPackages.entries.removeIf { it.value == pkg }
     }
 
     fun ruleFor(pkg: String): FirewallRule? {
         val raw = prefs.getString("rule:$pkg", null) ?: return null
-        val wifi = raw.substringAfter("wifi:").substringBefore(',').toIntOrNull() ?: 0
-        val data = raw.substringAfter("data:").toIntOrNull() ?: 0
+        val parts = raw.split(',').associate {
+            val (key, value) = it.split(':', limit = 2).let { pair ->
+                (pair.firstOrNull() ?: "") to (pair.getOrNull(1) ?: "")
+            }
+            key to (value.toIntOrNull() ?: 0)
+        }
+        val wifi = parts["wifi"] ?: 0
+        val data = parts["data"] ?: 0
         val net = when {
             wifi == 1 && data == 1 -> "both"
             wifi == 1 -> "wifi"
@@ -93,7 +102,9 @@ class FirewallManager(private val context: Context) {
             return if (uid == -1) "flagged" to "unattributed (limited /proc visibility)"
             else "allow" to null
         }
-        val pkg = context.packageManager.getPackagesForUid(uid)?.firstOrNull()
+        val pkg = uidPackages[uid] ?: context.packageManager.getPackagesForUid(uid)
+            ?.firstOrNull()
+            ?.also { uidPackages[uid] = it }
             ?: return "flagged" to "uid $uid has no package mapping"
         val rule = ruleFor(pkg)
         if (rule == null) {
@@ -117,6 +128,11 @@ class FirewallManager(private val context: Context) {
 
     private fun recordHit(pkg: String, delta: Int) {
         hits.merge(pkg, delta, Int::plus)
+    }
+
+    /** Package UIDs can be recycled after uninstall/reinstall. */
+    fun invalidateAttributionCache() {
+        uidPackages.clear()
     }
 
     /** Persist hit counters (called from UI refresh, not the packet path). */
@@ -143,7 +159,13 @@ class FirewallManager(private val context: Context) {
             "iptables -F FORTRESS_FW",
         )
         for (rule in rules()) {
-            val uid = context.packageManager.getPackageUid(rule.app, 0)
+            val uid = runCatching {
+                context.packageManager.getPackageUid(rule.app, 0)
+            }.getOrNull()
+            if (uid == null) {
+                onLine("iptables: stale package rule ignored: ${rule.app}")
+                continue
+            }
             // One rule per interface prefix — iptables accepts only a single -o
             // per rule, and carrier OEMs name their modem ifaces differently.
             val ifaces = when (rule.net) {

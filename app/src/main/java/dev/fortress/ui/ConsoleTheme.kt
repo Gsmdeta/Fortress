@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package dev.fortress.ui
 
 import androidx.compose.animation.core.animateDpAsState
@@ -19,8 +21,19 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +43,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,17 +81,25 @@ fun FortressConsoleTheme(content: @Composable () -> Unit) {
             onBackground = ConsoleColors.TextPrimary,
             surface = ConsoleColors.Bg,
             onSurface = ConsoleColors.TextPrimary,
+            surfaceVariant = ConsoleColors.PanelSolid,
+            onSurfaceVariant = ConsoleColors.TextMuted,
+            outline = ConsoleColors.PanelBorder,
         ),
         content = content,
     )
 }
 
 @Composable
-fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = ConsoleColors.TextFaint) {
+fun SectionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = ConsoleColors.TextFaint,
+    size: TextUnit = 11.sp,
+) {
     Text(
         text = text.uppercase(),
         fontFamily = FontFamily.Monospace,
-        fontSize = 11.sp,
+        fontSize = size,
         letterSpacing = 2.sp,
         color = color,
         modifier = modifier,
@@ -136,7 +159,8 @@ fun StatusChip(text: String, kind: ChipKind, modifier: Modifier = Modifier) {
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .border(1.dp, color, RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .semantics { contentDescription = text },
     ) {
         Text(
             text = text,
@@ -148,7 +172,7 @@ fun StatusChip(text: String, kind: ChipKind, modifier: Modifier = Modifier) {
     }
 }
 
-/** Emerald action button (primary) or outlined ghost variant, 44dp touch target.
+/** Emerald action button (primary) or outlined ghost variant, 48dp touch target.
  *  onClick is the LAST parameter so call sites can use trailing-lambda syntax. */
 @Composable
 fun ConsoleButton(
@@ -158,30 +182,168 @@ fun ConsoleButton(
     primary: Boolean = true,
     onClick: () -> Unit,
 ) {
-    val alpha = if (enabled) 1f else 0.4f
-    Box(
-        modifier = modifier
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (primary) ConsoleColors.Emerald.copy(alpha = alpha) else Color.Transparent)
-            .then(
-                if (!primary) {
-                    Modifier.border(1.dp, ConsoleColors.Emerald.copy(alpha = alpha), RoundedCornerShape(8.dp))
-                } else {
-                    Modifier
-                }
+    val shape = RoundedCornerShape(8.dp)
+    val contentPadding = androidx.compose.foundation.layout.PaddingValues(
+        horizontal = 20.dp,
+        vertical = 12.dp,
+    )
+    if (primary) {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.heightIn(min = 48.dp),
+            shape = shape,
+            contentPadding = contentPadding,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ConsoleColors.Emerald,
+                contentColor = ConsoleColors.Bg,
+                disabledContainerColor = ConsoleColors.Emerald.copy(alpha = 0.25f),
+                disabledContentColor = ConsoleColors.Bg.copy(alpha = 0.55f),
+            ),
+        ) {
+            Text(
+                text = text.uppercase(),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
             )
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        contentAlignment = Alignment.Center,
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = modifier.heightIn(min = 48.dp),
+            shape = shape,
+            contentPadding = contentPadding,
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                ConsoleColors.Emerald.copy(alpha = if (enabled) 1f else 0.4f),
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = ConsoleColors.Emerald,
+                disabledContentColor = ConsoleColors.Emerald.copy(alpha = 0.4f),
+            ),
+        ) {
+            Text(
+                text = text.uppercase(),
+                fontFamily = FontFamily.Monospace,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+    }
+}
+
+@Composable
+fun ConsoleTopAppBar(
+    title: String,
+    rooted: Boolean,
+    magisk: Boolean,
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text(
+                    text = "FORTRESS",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.5.sp,
+                )
+                SectionLabel(title, size = 9.sp)
+            }
+        },
+        actions = {
+            StatusChip(
+                if (rooted) "ROOT" else "LIMITED",
+                if (rooted) ChipKind.OK else ChipKind.WARN,
+                modifier = Modifier.padding(end = 6.dp),
+            )
+            if (magisk) {
+                StatusChip("MAGISK", ChipKind.OK, modifier = Modifier.padding(end = 12.dp))
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = ConsoleColors.Bg,
+            titleContentColor = ConsoleColors.TextPrimary,
+            actionIconContentColor = ConsoleColors.TextPrimary,
+        ),
+    )
+}
+
+@Composable
+fun ConsoleNavigationBar(
+    labels: List<String>,
+    glyphs: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    NavigationBar(
+        containerColor = ConsoleColors.PanelSolid,
+        contentColor = ConsoleColors.TextPrimary,
+        tonalElevation = 4.dp,
     ) {
-        Text(
-            text = text.uppercase(),
-            fontFamily = FontFamily.Monospace,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = (if (primary) ConsoleColors.Bg else ConsoleColors.Emerald).copy(alpha = alpha),
-        )
+        labels.forEachIndexed { index, label ->
+            NavigationBarItem(
+                selected = selected == index,
+                onClick = { onSelect(index) },
+                icon = {
+                    Text(
+                        text = glyphs.getOrElse(index) { "•" },
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                label = null,
+                alwaysShowLabel = false,
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = ConsoleColors.Bg,
+                    indicatorColor = ConsoleColors.Emerald,
+                    unselectedIconColor = ConsoleColors.TextMuted,
+                ),
+                modifier = Modifier.semantics { contentDescription = label },
+            )
+        }
+    }
+}
+
+@Composable
+fun ConsoleNavigationRail(
+    labels: List<String>,
+    glyphs: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+) {
+    NavigationRail(
+        containerColor = ConsoleColors.PanelSolid,
+        contentColor = ConsoleColors.TextPrimary,
+        header = { SectionLabel("FORTRESS", Modifier.padding(top = 18.dp, bottom = 10.dp), ConsoleColors.Emerald) },
+    ) {
+        labels.forEachIndexed { index, label ->
+            NavigationRailItem(
+                selected = selected == index,
+                onClick = { onSelect(index) },
+                icon = {
+                    Text(
+                        text = glyphs.getOrElse(index) { "•" },
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                label = { Text(label, fontFamily = FontFamily.Monospace, fontSize = 10.sp) },
+                alwaysShowLabel = true,
+                colors = NavigationRailItemDefaults.colors(
+                    selectedIconColor = ConsoleColors.Bg,
+                    selectedTextColor = ConsoleColors.Emerald,
+                    indicatorColor = ConsoleColors.Emerald,
+                    unselectedIconColor = ConsoleColors.TextMuted,
+                    unselectedTextColor = ConsoleColors.TextMuted,
+                ),
+                modifier = Modifier.semantics { contentDescription = label },
+            )
+        }
     }
 }
 
