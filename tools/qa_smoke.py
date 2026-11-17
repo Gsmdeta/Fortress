@@ -39,6 +39,7 @@ def main() -> None:
     artifact_scanner = read("app/src/main/java/dev/fortress/scanner/ArtifactScanner.kt")
     posture = read("app/src/main/java/dev/fortress/security/DevicePosture.kt")
     dashboard = read("app/src/main/java/dev/fortress/ui/DashboardTab.kt")
+    quarantine = read("app/src/main/java/dev/fortress/scanner/QuarantineManager.kt")
     cve_repository = read("app/src/main/java/dev/fortress/cve/CveRepository.kt")
     cv = json.loads(read("app/src/main/assets/cve-db.json"))
 
@@ -67,6 +68,7 @@ def main() -> None:
     require('artifact_limit' in settings and 'include_system_paths' in settings, "scan scope controls missing")
     require('DevicePosture.collect' in dashboard and 'DEVICE POSTURE' in dashboard, "live posture UI missing")
     require('ro.boot.verifiedbootstate' in posture and 'SECURITY_PATCH' in posture, "device integrity checks missing")
+    require('allowed' in quarantine and 'chmod 000' in quarantine and 'automatic quarantine' in settings.lower(), "explicit quarantine boundary missing")
     require('rollbackSoftwarePatch' in cve_repository and 'fortress_patch_ledger' in cve_repository, "CVE rollback ledger missing")
 
     # Every locally actionable catalog entry must have a concrete mitigation
