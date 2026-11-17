@@ -23,7 +23,7 @@
 
 ## Safety boundary
 
-Fortress is defensive tooling for devices the operator owns. Root actions may inspect state, install/remove the Fortress Magisk module, apply explicit DROP-only firewall rules, stop a named app, or apply a documented local hardening command. Never add memory writes, kernel patching, traffic redirection, credential collection, stealth, persistence outside the declared guard opt-in, or data upload without explicit consent.
+Fortress is defensive tooling for devices the operator owns. Root actions may inspect state, install/remove the Fortress Magisk module, apply explicit DROP-only firewall rules, stop a named app, isolate an operator-confirmed artifact from an allowlisted user/module path, or apply a documented local hardening command. Never add memory writes, kernel patching, traffic redirection, credential collection, stealth, persistence outside the declared guard opt-in, or data upload without explicit consent.
 
 ## Change workflow
 

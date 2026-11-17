@@ -34,6 +34,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.FileProvider
 import dev.fortress.ConsoleRuntime
 import dev.fortress.root.MagiskInstaller
+import dev.fortress.scanner.QuarantineManager
 import dev.fortress.vt.VirusTotalClient
 import kotlinx.coroutines.launch
 import java.io.File
@@ -60,6 +61,9 @@ fun SettingsTab() {
     var showResetPin by remember { mutableStateOf(false) }
     var vtKey by remember { mutableStateOf("") }
     var vtSaved by remember { mutableStateOf(virusTotal.hasKey()) }
+    var isolatePath by remember { mutableStateOf("") }
+    var isolateMessage by remember { mutableStateOf<String?>(null) }
+    var showIsolateConfirm by remember { mutableStateOf(false) }
 
     if (showResetPin) {
         AlertDialog(
@@ -75,6 +79,37 @@ fun SettingsTab() {
             },
             dismissButton = {
                 TextButton(onClick = { showResetPin = false }) { MonoText("CANCEL", size = 12.sp, color = ConsoleColors.TextMuted) }
+            },
+            containerColor = ConsoleColors.PanelSolid,
+        )
+    }
+
+    if (showIsolateConfirm) {
+        AlertDialog(
+            onDismissRequest = { showIsolateConfirm = false },
+            title = { MonoText("ISOLATE FILE", size = 18.sp) },
+            text = {
+                MonoText(
+                    "Copy this path into Fortress quarantine, lock the copy, and remove the original?\n\n$isolatePath",
+                    size = 12.sp,
+                    color = ConsoleColors.TextMuted,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showIsolateConfirm = false
+                    scope.launch {
+                        isolateMessage = "isolating…"
+                        val result = QuarantineManager.isolate(context, isolatePath)
+                        isolateMessage = result.message
+                        if (result.ok) isolatePath = ""
+                    }
+                }) { MonoText("ISOLATE", size = 12.sp, color = ConsoleColors.Amber) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIsolateConfirm = false }) {
+                    MonoText("CANCEL", size = 12.sp, color = ConsoleColors.TextMuted)
+                }
             },
             containerColor = ConsoleColors.PanelSolid,
         )
@@ -252,6 +287,40 @@ fun SettingsTab() {
                 size = 11.sp,
                 color = ConsoleColors.TextMuted,
             )
+        }
+
+        ConsolePanel(label = "THREAT RESPONSE · EXPLICIT ISOLATION") {
+            MonoText(
+                "Isolate a confirmed artifact into Fortress private storage. Automatic quarantine is disabled; the original path must be supplied by the operator.",
+                size = 11.sp,
+                color = ConsoleColors.TextMuted,
+            )
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = isolatePath,
+                onValueChange = { isolatePath = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { MonoText("/sdcard/Download/suspicious.apk", size = 11.sp, color = ConsoleColors.TextFaint) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ConsoleColors.Amber,
+                    unfocusedBorderColor = ConsoleColors.PanelBorder,
+                    focusedTextColor = ConsoleColors.TextPrimary,
+                    unfocusedTextColor = ConsoleColors.TextPrimary,
+                    cursorColor = ConsoleColors.Amber,
+                ),
+            )
+            Spacer(Modifier.height(8.dp))
+            ConsoleButton(
+                "ISOLATE CONFIRMED FILE",
+                modifier = Modifier.fillMaxWidth(),
+                enabled = isolatePath.isNotBlank(),
+                primary = false,
+            ) { showIsolateConfirm = true }
+            isolateMessage?.let {
+                Spacer(Modifier.height(8.dp))
+                MonoText(it, size = 11.sp, color = ConsoleColors.TextMuted)
+            }
         }
 
         ConsolePanel(label = "LOCAL ACCESS") {
